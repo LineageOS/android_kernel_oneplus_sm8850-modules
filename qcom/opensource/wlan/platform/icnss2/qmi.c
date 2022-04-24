@@ -36,6 +36,7 @@
 
 #ifdef OPLUS_FEATURE_WIFI_BDF
 #include <soc/oplus/system/oplus_project.h>
+#include "cnss_utils.h"
 #endif
 
 #define WLFW_SERVICE_WCN_INS_ID_V01	3
@@ -998,6 +999,9 @@ int icnss_qmi_get_dms_mac(struct icnss_priv *priv)
 	memcpy(priv->dms.mac, resp.mac_address, QMI_WLFW_MAC_ADDR_SIZE_V01);
 #endif /* OPLUS_FEATURE_WIFI_MAC */
 	icnss_pr_info("Received DMS MAC: [%pM]\n", priv->dms.mac);
+	if (cnss_utils_set_wlan_mac_address(priv->dms.mac,
+					    QMI_WLFW_MAC_ADDR_SIZE_V01) < 0)
+		icnss_pr_err("Failed to set WLAN MAC address in cnss utils\n");
 out:
 	return ret;
 }
