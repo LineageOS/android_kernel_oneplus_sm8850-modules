@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-#define DEBUG
+/* #define DEBUG */
 #define LOG_FLAG	"sipa_regmap"
 
 #include <linux/regmap.h>

@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-#define DEBUG
+/* #define DEBUG */
 // #define HAVE_BACKTRACE_SUPPORT
 #define LOG_FLAG	"sipa_91xx"
 
