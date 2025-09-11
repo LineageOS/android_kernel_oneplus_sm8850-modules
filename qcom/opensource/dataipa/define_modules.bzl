@@ -1,7 +1,8 @@
 load(":repo_paths.bzl", "modules_label", "soc_label")
-load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load(":target_variants.bzl", "get_all_variants")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
 
 def define_target_modules():
     for target, variant in get_all_variants():
@@ -344,14 +345,16 @@ def define_modules(target, variant):
         )
         mod_list.append("{}_ipatestm".format(kernel_build_variant))
 
-    copy_to_dist_dir(
+    pkg_files(
+        name = "{}_modules_dist_files".format(kernel_build_variant),
+        srcs = mod_list,
+        visibility = ["//visibility:private"],
+        strip_prefix = strip_prefix.files_only(),
+    )
+
+    pkg_install(
         name = "{}_modules_dist".format(kernel_build_variant),
-        data = mod_list,
-        dist_dir = "out/target/product/{}/dlkm/lib/modules/".format(target),
-        flat = True,
-        wipe_dist_dir = False,
-        allow_duplicate_filenames = False,
-        mode_overrides = {"**/*": "644"},
-        log = "info",
+        srcs = [":{}_modules_dist_files".format(kernel_build_variant)],
+        destdir = "out/target/product/{}/dlkm/lib/modules/".format(target),
     )
 

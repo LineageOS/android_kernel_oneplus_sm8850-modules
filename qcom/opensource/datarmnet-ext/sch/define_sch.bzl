@@ -1,6 +1,7 @@
 load(":repo_paths.bzl", "soc_label")
-load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
 
 def define_sch(target, variant):
     kernel_build_variant = "{}_{}".format(target, variant)
@@ -22,14 +23,17 @@ def define_sch(target, variant):
         visibility = [soc_label("__pkg__")],
     )
 
-    copy_to_dist_dir(
-        name = "{}_datarment-ext_dist".format(kernel_build_variant),
-        data = [
+    pkg_files(
+        name = "{}_datarment-ext_dist_files".format(kernel_build_variant),
+        srcs = [
             ":{}_sch".format(kernel_build_variant),
         ],
-        dist_dir = "out/target/product/{}/dlkm/lib/modules/".format(target),
-        flat = True,
-        wipe_dist_dir = False,
-        allow_duplicate_filenames = False,
-        mode_overrides = {"**/*": "644"},
+        visibility = ["//visibility:private"],
+        strip_prefix = strip_prefix.files_only(),
+    )
+
+    pkg_install(
+        name = "{}_datarment-ext_dist".format(kernel_build_variant),
+        srcs = [":{}_datarment-ext_dist_files".format(kernel_build_variant)],
+        destdir = "out/target/product/{}/dlkm/lib/modules/".format(target),
     )

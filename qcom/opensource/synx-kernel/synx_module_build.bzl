@@ -4,7 +4,8 @@ load(
     "ddk_module",
     "kernel_module_group",
 )
-load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
 
 def _register_module_to_map(module_map, name, path, config_option, srcs, config_srcs, deps, config_deps):
     processed_config_srcs = {}
@@ -120,14 +121,17 @@ def define_target_variant_modules(target, variant, registry, modules, config_opt
         srcs = all_module_rules,
     )
 
-    copy_to_dist_dir(
+    pkg_files(
+        name = kernel_build + "_dist_files",
+        srcs = [":{}_modules".format(kernel_build)],
+        visibility = ["//visibility:private"],
+        strip_prefix = strip_prefix.files_only(),
+    )
+
+    pkg_install(
         name = "{}_modules_dist".format(kernel_build),
-        data = [":{}_modules".format(kernel_build)],
-        dist_dir = "out/target/product/{}/dlkm/lib/modules/".format(kernel_build),
-        flat = True,
-        wipe_dist_dir = False,
-        allow_duplicate_filenames = False,
-        mode_overrides = {"**/*": "644"},
+        srcs = [":{}_dist_files".format(kernel_build)],
+        destdir = "out/target/product/{}/dlkm/lib/modules/".format(kernel_build),
     )
 
 def define_consolidate_perf_modules(target, registry, modules, config_options = []):

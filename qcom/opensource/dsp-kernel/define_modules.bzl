@@ -1,7 +1,6 @@
 # TODO
 # Add ddk module definition for frpc-trusted driver
 load(":repo_paths.bzl", "soc_label")
-load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 
 load(
     "//build/kernel/kleaf:kernel.bzl",
@@ -11,6 +10,8 @@ load(
     "kernel_modules_install",
     "kernel_unstripped_modules_archive",
 )
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
 
 def define_modules(target, variant):
     kernel_build_variant = "{}_{}".format(target, variant)
@@ -50,16 +51,19 @@ def define_modules(target, variant):
         ],
     )
 
-    copy_to_dist_dir(
-        name = "{}_dsp-kernel_dist".format(kernel_build_variant),
-        data = [
+    pkg_files(
+        name = "{}_dsp-kernel_dist_files".format(kernel_build_variant),
+        srcs = [
             ":{}_frpc-adsprpc".format(kernel_build_variant),
         ],
-        dist_dir = "out/target/product/{}/dlkm/lib/modules/".format(target),
-        flat = True,
-        wipe_dist_dir = False,
-        allow_duplicate_filenames = False,
-        mode_overrides = {"**/*": "644"},
+        visibility = ["//visibility:private"],
+        strip_prefix = strip_prefix.files_only(),
+    )
+
+    pkg_install(
+        name = "{}_dsp-kernel_dist".format(kernel_build_variant),
+        srcs = [":{}_dsp-kernel_dist_files".format(kernel_build_variant)],
+        destdir = "out/target/product/{}/dlkm/lib/modules/".format(target),
     )
 
 def define_vm_modules(target, variant):
@@ -109,17 +113,20 @@ def define_vm_modules(target, variant):
         kernel_modules = [":{}_frpc-trusted-adsprpc".format(kernel_build_variant)],
     )
 
-    copy_to_dist_dir(
-        name = "{}_dsp-kernel_dist".format(kernel_build_variant),
-        data = [
+    pkg_files(
+        name = "{}_dsp-kernel_dist_files".format(kernel_build_variant),
+        srcs = [
             ":{}_frpc-trusted-adsprpc".format(kernel_build_variant),
             ":{}_fastrpc_unstripped_modules_tar".format(kernel_build_variant),
         ],
-        dist_dir = "out/target/product/{}/dlkm/lib/modules/".format(target),
-        flat = True,
-        wipe_dist_dir = False,
-        allow_duplicate_filenames = False,
-        mode_overrides = {"**/*": "644"},
+        visibility = ["//visibility:private"],
+        strip_prefix = strip_prefix.files_only(),
+    )
+
+    pkg_install(
+        name = "{}_dsp-kernel_dist".format(kernel_build_variant),
+        srcs = [":{}_dsp-kernel_dist_files".format(kernel_build_variant)],
+        destdir = "out/target/product/{}/dlkm/lib/modules/".format(target),
     )
 
 def define_target_modules():

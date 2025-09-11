@@ -1,7 +1,8 @@
 load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_module", "ddk_headers")
-load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load(":build/target_variants.bzl", "get_all_variants")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
 
 msm_kgsl_includes = [
     "include/linux/msm_kgsl.h",
@@ -195,15 +196,17 @@ def define_target_variant_module(target, variant):
         visibility = [soc_label("__pkg__")]
     )
 
-    copy_to_dist_dir(
+    pkg_files(
+        name = rule_name + "_dist_files",
+        srcs = [rule_name],
+        visibility = ["//visibility:private"],
+        strip_prefix = strip_prefix.files_only(),
+    )
+
+    pkg_install(
         name = "{}_dist".format(rule_name),
-        data = [rule_name],
-        dist_dir = "out/graphics-kernel",
-        flat = True,
-        wipe_dist_dir = False,
-        allow_duplicate_filenames = False,
-        mode_overrides = {"**/*": "644"},
-        log = "info",
+        srcs = [":{}_dist_files".format(rule_name)],
+        destdir = "out/target/product/{}/dlkm/lib/modules/".format(target),
     )
 
 def define_target_modules():

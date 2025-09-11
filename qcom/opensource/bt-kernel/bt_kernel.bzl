@@ -1,8 +1,9 @@
 load(":repo_paths.bzl", "soc_label")
 load(":target_variants.bzl", "get_all_variants")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
-load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load(":bt_modules.bzl", "bt_modules")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
 
 def _get_config_choices(config_srcs, options):
     choices = []
@@ -88,15 +89,17 @@ def define_target_variant_modules(target, variant, modules, config_options = [])
 
         all_modules.append(rule_name)
 
-    copy_to_dist_dir(
+    pkg_files(
+        name = "{}_bt-kernel_dist_files".format(kernel_build),
+        srcs = all_modules,
+        visibility = ["//visibility:private"],
+        strip_prefix = strip_prefix.files_only(),
+    )
+
+    pkg_install(
         name = "{}_bt-kernel_dist".format(kernel_build),
-        data = all_modules,
-        dist_dir = "out/target/product/{}/dlkm/lib/modules".format(target),
-        flat = True,
-        wipe_dist_dir = False,
-        allow_duplicate_filenames = False,
-        mode_overrides = {"**/*": "644"},
-        log = "info",
+        srcs = [":{}_bt-kernel_dist_files".format(kernel_build)],
+        destdir = "out/target/product/{}/dlkm/lib/modules".format(target),
     )
 
 def define_bt_modules(target, modules, config_options = []):
