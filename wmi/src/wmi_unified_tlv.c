@@ -25915,6 +25915,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_VDEV_CHAN_HOP_STATUS_REPORT;
 	wmi_service[wmi_service_passthru_vdev_ampdu_ra_support] =
 				WMI_SERVICE_PASSTHRU_VDEV_AMPDU_RA_SUPPORT;
+	wmi_service[wmi_service_skip_pmk_match_delete_support] =
+				WMI_SERVICE_SKIP_PMK_MATCH_DELETE_SUPPORT;
 }
 
 /**
