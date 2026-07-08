@@ -2380,6 +2380,13 @@ static void hdd_update_tgt_ht_cap(struct hdd_context *hdd_ctx,
 	if (ht_cap_info.rx_stbc && !cfg->ht_rx_stbc)
 		ht_cap_info.rx_stbc = cfg->ht_rx_stbc;
 
+	/*
+	 * Snapshot the resolved RX STBC capability as the immutable
+	 * baseline, since ht_cap_info.rx_stbc itself gets overwritten
+	 * by runtime rx_stbc toggles (hdd_set_rx_stbc()).
+	 */
+	ucfg_mlme_set_ht_rx_stbc_orig(hdd_ctx->psoc, ht_cap_info.rx_stbc);
+
 	/* Set the LDPC capability */
 	if (ht_cap_info.adv_coding_cap && !cfg->ht_rx_ldpc)
 		ht_cap_info.adv_coding_cap = cfg->ht_rx_ldpc;
