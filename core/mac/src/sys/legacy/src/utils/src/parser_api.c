@@ -10566,7 +10566,9 @@ populate_dot11f_revise_eht_caps(struct pe_session *session,
 	if (!WLAN_REG_IS_6GHZ_CHAN_FREQ(session->curr_op_freq) ||
 	    session->ch_width != CH_WIDTH_320MHZ) {
 		eht_cap->support_320mhz_6ghz = 0;
-		eht_cap->bfee_ss_320mhz = 0;
+
+		if (!WLAN_REG_IS_6GHZ_CHAN_FREQ(session->curr_op_freq))
+			eht_cap->bfee_ss_320mhz = 0;
 	}
 
 	pe_debug("320 MHz support %d", eht_cap->support_320mhz_6ghz);
