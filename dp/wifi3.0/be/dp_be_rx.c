@@ -707,7 +707,6 @@ more_data:
 				hal_rx_get_reo_desc_va(ring_desc);
 		dp_rx_desc_sw_cc_check(soc, rx_buf_cookie, &rx_desc);
 
-		dp_rx_ring_desc_invalidate(ring_desc);
 		dp_rx_reset_stale_entry_detection(soc, reo_ring_num);
 
 		status = dp_rx_desc_sanity(soc, hal_soc, hal_ring_hdl,
@@ -723,6 +722,7 @@ more_data:
 					&tail[rx_desc->chip_id][rx_desc->pool_id],
 					rx_desc);
 			}
+			dp_rx_ring_desc_invalidate(ring_desc);
 			continue;
 		}
 
@@ -739,6 +739,7 @@ more_data:
 			dp_info_rl("Reaping rx_desc not in use!");
 			dp_rx_dump_info_and_assert(soc, hal_ring_hdl,
 						   ring_desc, rx_desc);
+			dp_rx_ring_desc_invalidate(ring_desc);
 			continue;
 		}
 
@@ -749,6 +750,7 @@ more_data:
 			dp_rx_dump_info_and_assert(soc, hal_ring_hdl,
 						   ring_desc, rx_desc);
 			rx_desc->in_err_state = 1;
+			dp_rx_ring_desc_invalidate(ring_desc);
 			continue;
 		}
 
@@ -840,9 +842,11 @@ more_data:
 			       soc->stats.rx.err.msdu_done_fail);
 			dp_rx_msdu_done_fail_event_record(soc, rx_desc,
 							  rx_desc->nbuf);
+			dp_rx_ring_desc_invalidate(ring_desc);
 			continue;
 		}
 
+		dp_rx_ring_desc_invalidate(ring_desc);
 		if (!is_prev_msdu_last &&
 		    !(qdf_nbuf_is_rx_chfrag_cont(rx_desc->nbuf)))
 			is_prev_msdu_last = true;
