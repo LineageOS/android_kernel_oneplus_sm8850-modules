@@ -32,6 +32,14 @@
 #include <dsp/msm_audio_ion.h>
 #include <linux/version.h>
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+#include "feedback/oplus_audio_kernel_fb.h"
+#ifdef dev_err
+#undef dev_err
+#define dev_err dev_err_fb_fatal_delay
+#endif
+#endif /*CONFIG_OPLUS_FEATURE_MM_FEEDBACK*/
+
 /* Define IPC Logging Macros */
 #define AUDIO_PKT_IPC_LOG_PAGE_CNT 2
 static void *audio_pkt_ilctxt;
@@ -629,7 +637,12 @@ static int audio_pkt_srvc_callback(struct gpr_device *adev,
 
 	skb = alloc_skb(pkt_size, GFP_ATOMIC);
 	if (!skb) {
+#ifdef OPLUS_ARCH_EXTENDS
+/*Modify for not feeback fail before try backup*/
+		dev_info(&adev->dev, "%s: alloc_skb failed pkt_size %d\n", __func__, pkt_size);
+#else /* OPLUS_ARCH_EXTENDS */
 		dev_err(&adev->dev, "%s: alloc_skb failed pkt_size %d\n", __func__, pkt_size);
+#endif /* OPLUS_ARCH_EXTENDS */
 		skb = audio_pkt_get_backup();
 		if (!skb) {
 			dev_err(&adev->dev, "%s: get backup skb buffers failed\n",

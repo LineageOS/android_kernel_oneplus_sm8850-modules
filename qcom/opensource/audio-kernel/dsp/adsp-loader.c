@@ -24,6 +24,10 @@
 #include <linux/remoteproc/qcom_rproc.h>
 #include <linux/version.h>
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
 #define Q6_PIL_GET_DELAY_MS 100
 #define BOOT_CMD 1
 #define SSR_RESET_CMD 1
@@ -56,6 +60,16 @@ static char *rproc_state_string[RPROC_ADSP_MAX] = {
 	"default",
 };
 
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for limit ssr */
+#define ADSP_SSR_LIMIT_MS 60000
+#define ADSP_SSR_DEFER_ENABLE  1
+#define ADSP_SSR_DEFER_DISABLE 0
+static ktime_t ssr_time = 0;
+static DEFINE_MUTEX(oplus_ssr_lock);
+bool oplus_daemon_adsp_ssr(void);
+#endif /* OPLUS_ARCH_EXTENDS */
+
 static ssize_t adsp_boot_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	const char *buf, size_t count);
@@ -63,6 +77,12 @@ static ssize_t adsp_boot_store(struct kobject *kobj,
 static ssize_t adsp_ssr_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	const char *buf, size_t count);
+
+#ifdef OPLUS_ARCH_EXTENDS
+static ssize_t adsp_ssr_defer_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t count);
+#endif /* OPLUS_ARCH_EXTENDS */
 
 struct adsp_loader_private {
 	void *pil_h;
@@ -72,6 +92,10 @@ struct adsp_loader_private {
 	bool ssr_triggered;
 	struct notifier_block ssr_nb;
 	void *ssr_notif_hdl;
+#ifdef OPLUS_ARCH_EXTENDS
+	bool ssr_deferred;
+	bool ssr_pending;
+#endif /* OPLUS_ARCH_EXTENDS */
 };
 
 static struct kobj_attribute adsp_boot_attribute =
@@ -80,9 +104,17 @@ static struct kobj_attribute adsp_boot_attribute =
 static struct kobj_attribute adsp_ssr_attribute =
 	__ATTR(ssr, 0220, NULL, adsp_ssr_store);
 
+#ifdef OPLUS_ARCH_EXTENDS
+static struct kobj_attribute adsp_ssr_defer_attribute =
+	__ATTR(ssr_defer, 0220, NULL, adsp_ssr_defer_store);
+#endif /* OPLUS_ARCH_EXTENDS */
+
 static struct attribute *attrs[] = {
 	&adsp_boot_attribute.attr,
 	&adsp_ssr_attribute.attr,
+#ifdef OPLUS_ARCH_EXTENDS
+	&adsp_ssr_defer_attribute.attr,
+#endif /* OPLUS_ARCH_EXTENDS */
 	NULL,
 };
 
@@ -93,6 +125,11 @@ static u64 last_adsp_power_up_ts;
 static DEFINE_MUTEX(dsp_status_lock);
 
 static enum adsp_ssr_state rproc_state = RPROC_ADSP_NULL;
+
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for The sound card is not registered yet, so adsp ssr cannot be executed. case 07926814 */
+static bool is_initial_boot = false;
+#endif /* OPLUS_ARCH_EXTENDS */
 
 static void adsp_load_fw(struct work_struct *adsp_ldr_work)
 {
@@ -225,8 +262,21 @@ static ssize_t adsp_ssr_store(struct kobject *kobj,
 	u64 timestamp = 0;
 	u64 time_diff_ns = 0;
 
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add mutex for ssr */
+	pr_err("%s: enter\n", __func__);
+	mutex_lock(&oplus_ssr_lock);
+	if (!pdev) {
+		pr_err("%s: Platform device null\n", __func__);
+		mutex_unlock(&oplus_ssr_lock);
+		return -EINVAL;
+	}
+#endif /* OPLUS_ARCH_EXTENDS */
+
 	dev_dbg(&pdev->dev, "%s: going to call adsp ssr\n ", __func__);
 
+#ifndef OPLUS_ARCH_EXTENDS
+/* Add mutex for ssr */
 	priv = platform_get_drvdata(pdev);
 	if (!priv)
 		return -EINVAL;
@@ -240,11 +290,42 @@ static ssize_t adsp_ssr_store(struct kobject *kobj,
 	adsp_dev = (struct rproc *)priv->pil_h;
 	if (!adsp_dev)
 		return -EINVAL;
+#else /* OPLUS_ARCH_EXTENDS */
+	priv = platform_get_drvdata(pdev);
+	if (!priv) {
+		pr_err("%s: priv null\n", __func__);
+		mutex_unlock(&oplus_ssr_lock);
+		return -EINVAL;
+	}
+
+	if (kstrtoint(buf, 10, &ssr_command) < 0) {
+		pr_err("%s: ssr command invalid\n", __func__);
+		mutex_unlock(&oplus_ssr_lock);
+		return -EINVAL;
+	}
+
+	if (ssr_command != SSR_RESET_CMD) {
+		pr_err("%s: ssr_command %d\n", __func__, ssr_command);
+		mutex_unlock(&oplus_ssr_lock);
+		return -EINVAL;
+	}
+
+	adsp_dev = (struct rproc *)priv->pil_h;
+	if (!adsp_dev) {
+		pr_err("%s: adsp_dev null\n", __func__);
+		mutex_unlock(&oplus_ssr_lock);
+		return -EINVAL;
+	}
+#endif /* OPLUS_ARCH_EXTENDS */
+
 
 	dev_dbg(&pdev->dev, "requesting for ADSP restart\n");
 
 	if (!mutex_trylock(&dsp_status_lock)) {
 		dev_err(&pdev->dev, "status_lock is hold, SSR ongoing, ignore this request\n");
+#ifdef OPLUS_ARCH_EXTENDS
+		mutex_unlock(&oplus_ssr_lock);
+#endif /* OPLUS_ARCH_EXTENDS */
 		return -EAGAIN;
 	}
 
@@ -252,6 +333,9 @@ static ssize_t adsp_ssr_store(struct kobject *kobj,
 		dev_err(&pdev->dev, "adsp state already changed[%s], ignore this request\n",
 					rproc_state_string[rproc_state]);
 		mutex_unlock(&dsp_status_lock);
+#ifdef OPLUS_ARCH_EXTENDS
+		mutex_unlock(&oplus_ssr_lock);
+#endif /* OPLUS_ARCH_EXTENDS */
 		return -EAGAIN;
 	}
 
@@ -259,6 +343,9 @@ static ssize_t adsp_ssr_store(struct kobject *kobj,
 	if (timestamp < last_adsp_power_up_ts) {
 		/* this should not happen, just assure code robust */
 		mutex_unlock(&dsp_status_lock);
+#ifdef OPLUS_ARCH_EXTENDS
+		mutex_unlock(&oplus_ssr_lock);
+#endif /* OPLUS_ARCH_EXTENDS */
 		return -EAGAIN;
 	}
 
@@ -270,17 +357,154 @@ static ssize_t adsp_ssr_store(struct kobject *kobj,
 		last_adsp_power_up_ts % NSEC_PER_SEC_ULL,
 		(30 * NSEC_PER_SEC_ULL - time_diff_ns) / NSEC_PER_SEC_ULL);
 		mutex_unlock(&dsp_status_lock);
+#ifdef OPLUS_ARCH_EXTENDS
+		mutex_unlock(&oplus_ssr_lock);
+#endif /* OPLUS_ARCH_EXTENDS */
 		return -EAGAIN;
 	}
 	mutex_unlock(&dsp_status_lock);
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for limit ssr */
+	ssr_time = ktime_get();
+	priv->ssr_pending = false;
+#endif /* OPLUS_ARCH_EXTENDS */
 	priv->ssr_triggered = true;
 	rproc_shutdown(adsp_dev);
 
 	adsp_loader_do(adsp_private);
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+	mm_fb_audio_kevent_named_delay(OPLUS_AUDIO_EVENTID_DAEMON, \
+		MM_FB_KEY_RATELIMIT_5MIN, 2, "FieldData@@APPS requesting for ADSP restart$$detailData@@audio$$module@@adsp");
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
 	dev_info(&pdev->dev, "%s :: ADSP restarted\n", __func__);
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add mutex for ssr */
+	mutex_unlock(&oplus_ssr_lock);
+	pr_err("%s: exit\n", __func__);
+#endif /* OPLUS_ARCH_EXTENDS */
 	return count;
 }
+
+#ifdef OPLUS_ARCH_EXTENDS
+static ssize_t adsp_ssr_defer_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf,
+	size_t count)
+{
+	int defer_command = 0;
+	struct platform_device *pdev = adsp_private;
+	struct adsp_loader_private *priv = NULL;
+
+	priv = platform_get_drvdata(pdev);
+	if (!priv)
+		return -EINVAL;
+
+	if (kstrtoint(buf, 10, &defer_command) < 0)
+		return -EINVAL;
+
+	pr_info("%s: defer_command %d\n", __func__, defer_command);
+
+	if (defer_command == ADSP_SSR_DEFER_ENABLE) {
+		priv->ssr_deferred = true;
+	} else if (defer_command == ADSP_SSR_DEFER_DISABLE) {
+		priv->ssr_deferred = false;
+		if (priv->ssr_pending) {
+			pr_info("%s: ssr is pending, do adsp ssr\n", __func__);
+			oplus_daemon_adsp_ssr();
+		}
+	}
+	return count;
+}
+
+bool oplus_daemon_adsp_ssr(void)
+{
+	struct rproc *adsp_dev = NULL;
+	struct platform_device *pdev = adsp_private;
+	struct adsp_loader_private *priv = NULL;
+	bool ret = false;
+	u64 timestamp;
+
+	pr_err("%s: enter\n", __func__);
+	mutex_lock(&oplus_ssr_lock);
+	if (!is_initial_boot) {
+		pr_err("%s: The sound card is not registered\n", __func__);
+		goto exit;
+	}
+	if (ktime_after(ktime_get(), ktime_add_ms(ssr_time, ADSP_SSR_LIMIT_MS))) {
+		// ssr request
+	} else {
+		pr_err("%s: ignore this ssr request. ssr_time: %lld, current time:  %lld\n", __func__, ssr_time, ktime_get());
+		goto exit;
+	}
+
+	if (!pdev) {
+		pr_err("%s: Platform device null\n", __func__);
+		goto exit;
+	}
+	dev_dbg(&pdev->dev, "%s: going to call adsp ssr\n", __func__);
+
+	priv = platform_get_drvdata(pdev);
+	if (!priv) {
+		goto exit;
+	}
+
+	adsp_dev = (struct rproc *)priv->pil_h;
+	if (!adsp_dev) {
+		goto exit;
+	}
+
+	if (!mutex_trylock(&dsp_status_lock))
+		goto exit;
+
+	timestamp = ktime_get_ns();
+	if ((rproc_state != RPROC_ADSP_BOOT_UP && rproc_state != RPROC_ADSP_NULL) ||
+	    timestamp < last_adsp_power_up_ts ||
+	    (rproc_state == RPROC_ADSP_BOOT_UP &&
+	     timestamp - last_adsp_power_up_ts < 30 * NSEC_PER_SEC_ULL)) {
+		mutex_unlock(&dsp_status_lock);
+		goto exit;
+	}
+	mutex_unlock(&dsp_status_lock);
+
+	if (priv->ssr_deferred) {
+		priv->ssr_pending = true;
+		pr_info("%s: deferred adsp ssr\n", __func__);
+		goto exit;
+	}
+
+	dev_err(&pdev->dev, "%s: requesting for ADSP restart\n", __func__);
+
+	ssr_time = ktime_get();
+	priv->ssr_pending = false;
+	/* Add for always load adsp image when ssr is triggered */
+	priv->ssr_triggered = true;
+	rproc_shutdown(adsp_dev);
+	adsp_loader_do(adsp_private);
+	ret = true;
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+	mm_fb_audio_kevent_named_delay(OPLUS_AUDIO_EVENTID_DAEMON, \
+		MM_FB_KEY_RATELIMIT_5MIN, 2, "FieldData@@oplus daemon requesting for ADSP restart$$detailData@@audio$$module@@adsp");
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
+	dev_dbg(&pdev->dev, "%s :: ADSP restarted\n", __func__);
+
+exit:
+	mutex_unlock(&oplus_ssr_lock);
+	pr_err("%s: exit\n", __func__);
+	return ret;
+}
+EXPORT_SYMBOL(oplus_daemon_adsp_ssr);
+
+void oplus_set_sound_card_init_done(void)
+{
+	is_initial_boot = true;
+	pr_info("%s: Sound card registered: is_initial_boot: %d\n", __func__, is_initial_boot);
+}
+EXPORT_SYMBOL(oplus_set_sound_card_init_done);
+#endif /* OPLUS_ARCH_EXTENDS */
 
 static ssize_t adsp_boot_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
@@ -335,6 +559,10 @@ static int adsp_loader_init_sysfs(struct platform_device *pdev)
 	priv->pil_h = NULL;
 	priv->boot_adsp_obj = NULL;
 	priv->ssr_triggered = false;
+#ifdef OPLUS_ARCH_EXTENDS
+	priv->ssr_deferred = false;
+	priv->ssr_pending = false;
+#endif /* OPLUS_ARCH_EXTENDS */
 	priv->attr_group = devm_kzalloc(&pdev->dev,
 				sizeof(*(priv->attr_group)),
 				GFP_KERNEL);

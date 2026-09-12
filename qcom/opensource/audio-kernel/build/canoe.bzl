@@ -48,7 +48,22 @@ def define_canoe():
             "lpass_bt_swr_dlkm",
             "qmp_dlkm",
             "wsa885x_i2c_dlkm",
-            "simple_amp_dlkm"
+            "simple_amp_dlkm",
+#ifdef OPLUS_ARCH_EXTENDS
+#add for oplus audio extends driver
+            "oplus_audio_extend",
+            "oplus_audio_tfa98xx_v6",
+            "oplus_audio_aw882xx",
+#ifdef CONFIG_AUDIO_DAEMON_KERNEL_QCOM
+#add for oplus audio daemon kernel
+            "oplus_audio_daemon",
+#endif /* CONFIG_AUDIO_DAEMON_KERNEL_QCOM */
+#ifdef CONFIG_AUDIO_NETLINK_KERNEL
+#add for oplus audio netlink kernel
+            "oplus_audio_netlink",
+#endif /* CONFIG_AUDIO_NETLINK_KERNEL */
+            "oplus_typec_switch_i2c"
+#endif /* OPLUS_ARCH_EXTENDS */
         ],
         config_options = [
             "CONFIG_SND_SOC_CANOE",
@@ -69,5 +84,12 @@ def define_canoe():
             "CONFIG_SND_SOC_QMP",
             "CONFIG_SND_SOC_WSA885X_I2C",
             "CONFIG_SND_SOC_SIMPLE_AMP",
+#ifdef OPLUS_ARCH_EXTENDS
+#add for oplus audio extends driver
+            "OPLUS_ARCH_EXTENDS",
+            "OPLUS_FEATURE_SPEAKER_MUTE",
+            "OPLUS_FEATURE_RINGTONE_HAPTIC",
+            "CONFIG_OPLUS_FEATURE_MM_FEEDBACK",
+#endif /* OPLUS_ARCH_EXTENDS */
         ]
     )

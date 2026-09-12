@@ -39,6 +39,23 @@
 #include <linux/soc/qcom/wcd939x-i2c.h>
 #endif
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+#include "feedback/oplus_audio_kernel_fb.h"
+#ifdef dev_err
+#undef dev_err
+#define dev_err dev_err_fb_delay
+#endif
+#ifdef dev_err_ratelimited
+#undef dev_err_ratelimited
+#define dev_err_ratelimited dev_err_ratelimited_fb_delay
+#endif
+#ifdef pr_err
+#undef pr_err
+#define pr_err pr_err_fb_delay
+#endif
+#define ERR_CNT 10
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
 #define REGDUMP_PRINT_LEN 8
 #define NUM_SWRS_DT_PARAMS 5
 #define WCD939X_VARIANT_ENTRY_SIZE 32
@@ -58,7 +75,12 @@
 #define XTALK_R_CH_NUM 1
 #define GND_EXT_FET_MARGIN_MOHMS 200
 
+#ifndef OPLUS_ARCH_EXTENDS
+/* add sufficient delay to enumerate wcd tx slave, CR3252303 */
 #define NUM_ATTEMPTS 5
+#else /* OPLUS_ARCH_EXTENDS */
+#define NUM_ATTEMPTS 20
+#endif /* OPLUS_ARCH_EXTENDS */
 #define COMP_MAX_COEFF 25
 #define HPH_MODE_MAX 4
 
@@ -2341,6 +2363,14 @@ static int wcd939x_codec_enable_adc(struct snd_soc_dapm_widget *w,
 		wcd939x->tx_swr_dev->dev_num) ? 0 : 1);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+#ifdef OPLUS_ARCH_EXTENDS
+/* workaround for mic mute or headset not detect issue after ESD. */
+		if (wcd939x->mbhc &&
+			wcd939x->mbhc->wcd_mbhc.mbhc_cb &&
+			wcd939x->mbhc->wcd_mbhc.mbhc_cb->check_corrupted) {
+			wcd939x->mbhc->wcd_mbhc.mbhc_cb->check_corrupted(&wcd939x->mbhc->wcd_mbhc);
+		}
+#endif /* OPLUS_ARCH_EXTENDS */
 		wcd939x->adc_count++;
 		if (test_bit(WCD_ADC1, &wcd939x->status_mask) ||
 			test_bit(WCD_ADC1_MODE, &wcd939x->status_mask))
@@ -2730,6 +2760,12 @@ static int wcd939x_get_logical_addr(struct swr_device *swr_dev)
 		/* retry after 1ms */
 		usleep_range(1000, 1010);
 		ret = swr_get_logical_dev_num(swr_dev, swr_dev->addr, &devnum);
+#ifdef OPLUS_ARCH_EXTENDS
+/* add sufficient delay to enumerate wcd tx slave, CR3252303 */
+		if (ret) {
+			usleep_range(3000, 3010);
+		}
+#endif /* OPLUS_ARCH_EXTENDS */
 	} while (ret && --num_retry);
 
 	if (ret)
@@ -2827,6 +2863,11 @@ static int wcd939x_event_notify(struct notifier_block *block,
 						     NULL);
 		wcd939x->mbhc->wcd_mbhc.deinit_in_progress = true;
 		mbhc = &wcd939x->mbhc->wcd_mbhc;
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for fix headset not correct after ssr */
+		mbhc->plug_before_ssr = mbhc->current_plug;
+		pr_info("%s: mbhc->plug_before_ssr=%d\n", __func__, mbhc->plug_before_ssr);
+#endif /* OPLUS_ARCH_EXTENDS */
 		wcd939x->usbc_hs_status = get_usbc_hs_status(component,
 						mbhc->mbhc_cfg);
 		wcd939x_mbhc_ssr_down(wcd939x->mbhc, component);
@@ -3674,6 +3715,46 @@ static const struct soc_enum rx_hph_mode_mux_enum =
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(rx_hph_mode_mux_text),
 			    rx_hph_mode_mux_text);
 
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for ssr with rus */
+static int wcd_ssr_enable = 0;
+static const char * const wcd_ssr_switch_text[] = {"Disable", "Enable"};
+static const struct soc_enum wcd_ssr_switch_enum =
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(wcd_ssr_switch_text),
+			    wcd_ssr_switch_text);
+
+static int wcd939x_ssr_switch_get(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component =
+				snd_soc_kcontrol_component(kcontrol);
+	struct wcd939x_priv *wcd939x = snd_soc_component_get_drvdata(component);
+
+	if (wcd939x->mbhc) {
+		ucontrol->value.integer.value[0] = wcd939x->mbhc->wcd_mbhc.ssr_enable;
+	} else {
+		ucontrol->value.integer.value[0] = wcd_ssr_enable;
+	}
+
+	return 0;
+}
+
+static int wcd939x_ssr_switch_put(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component =
+			snd_soc_kcontrol_component(kcontrol);
+	struct wcd939x_priv *wcd939x = snd_soc_component_get_drvdata(component);
+
+	wcd_ssr_enable = ucontrol->value.integer.value[0];
+	if (wcd939x->mbhc) {
+		wcd939x->mbhc->wcd_mbhc.ssr_enable = wcd_ssr_enable;
+	}
+
+	return 0;
+}
+#endif /* OPLUS_ARCH_EXTENDS */
+
 static const struct snd_kcontrol_new wcd9390_snd_controls[] = {
 	SOC_ENUM_EXT("EAR PA GAIN", wcd939x_ear_pa_gain_enum,
 		wcd939x_ear_pa_gain_get, wcd939x_ear_pa_gain_put),
@@ -3766,6 +3847,11 @@ static const struct snd_kcontrol_new wcd939x_snd_controls[] = {
 			wcd939x_tx_master_ch_get, wcd939x_tx_master_ch_put),
 	SOC_ENUM_EXT("DMIC7 ChMap", tx_master_ch_enum,
 			wcd939x_tx_master_ch_get, wcd939x_tx_master_ch_put),
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for ssr with rus */
+	SOC_ENUM_EXT("WCD_SSR_SWITCH", wcd_ssr_switch_enum,
+			wcd939x_ssr_switch_get, wcd939x_ssr_switch_put),
+#endif /* OPLUS_ARCH_EXTENDS */
 };
 
 static const struct snd_kcontrol_new adc1_switch[] = {
@@ -4805,6 +4891,10 @@ static int wcd939x_soc_codec_probe(struct snd_soc_component *component)
 
 	wcd_cls_h_init(&wcd939x->clsh_info);
 	wcd939x_init_reg(component);
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for ssr with rus */
+	wcd939x->mbhc->wcd_mbhc.ssr_enable = wcd_ssr_enable;
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	if (wcd939x->variant == WCD9390) {
 		ret = snd_soc_add_component_controls(component, wcd9390_snd_controls,
@@ -4955,11 +5045,25 @@ static int wcd939x_reset(struct device *dev)
 #endif
 
 	rc = msm_cdc_pinctrl_select_sleep_state(wcd939x->rst_np);
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+	if (rc) {
+		if (wcd939x->mbhc == NULL) {
+			dev_err_not_fb(dev, "%s: wcd sleep state request fail! rc:%d\n",
+					__func__, rc);
+		} else {
+			dev_err_ratelimited(dev, "%s: wcd sleep state request fail!\n",
+					__func__);
+		}
+		return -EPROBE_DEFER;
+	}
+#else /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 	if (rc) {
 		dev_err_ratelimited(dev, "%s: wcd sleep state request fail!\n",
 				__func__);
 		return -EPROBE_DEFER;
 	}
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
 	/* 20us sleep required after pulling the reset gpio to LOW */
 	usleep_range(80, 85);
 
@@ -5273,6 +5377,22 @@ static void wcd939x_dt_parse_usbcss_hs_info(struct device *dev,
 		usbcss_hs->gnd.sbu2.r7 = prop_val;
 		usbcss_hs->gnd.sbu2.r_gnd_par_route1_mohms = prop_val;
 	}
+
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for tuning headphone digital crosstalk params */
+	parse_xtalk_param(dev, usbcss_hs->xtalk.scale_l, &prop_val,
+			"oplus,usbcss-hs-scale-l");
+	usbcss_hs->xtalk.scale_l = prop_val;
+	parse_xtalk_param(dev, usbcss_hs->xtalk.alpha_l, &prop_val,
+			"oplus,usbcss-hs-alpha-l");
+	usbcss_hs->xtalk.alpha_l = prop_val;
+	parse_xtalk_param(dev, usbcss_hs->xtalk.scale_r, &prop_val,
+			"oplus,usbcss-hs-scale-r");
+	usbcss_hs->xtalk.scale_r = prop_val;
+	parse_xtalk_param(dev, usbcss_hs->xtalk.alpha_r, &prop_val,
+			"oplus,usbcss-hs-alpha-r");
+	usbcss_hs->xtalk.alpha_r = prop_val;
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	/* Compute total resistances */
 	usbcss_hs->gnd.sbu1.r_gnd_par_tot_mohms = usbcss_hs->gnd.sbu1.r_gnd_par_route1_mohms +
@@ -5789,10 +5909,18 @@ static int wcd939x_probe(struct platform_device *pdev)
 		goto err_lock_init;
 
 	ret = wcd939x_reset(dev);
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+	dev_err_count_ratelimited_fb_delay(ret, ERR_CNT, dev, "%s: wcd reset failed!\n", __func__);
+	if (ret == -EPROBE_DEFER) {
+		dev_err_not_fb(dev, "%s: wcd reset failed!\n", __func__);
+		goto err_lock_init;
+	}
+#else /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 	if (ret == -EPROBE_DEFER) {
 		dev_err(dev, "%s: wcd reset failed!\n", __func__);
 		goto err_lock_init;
 	}
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 	wcd939x->wakeup = wcd939x_wakeup;
 

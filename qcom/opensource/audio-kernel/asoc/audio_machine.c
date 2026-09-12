@@ -51,6 +51,25 @@
 #include "msm_common.h"
 #include "msm_dailink.h"
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+#include "feedback/oplus_audio_kernel_fb.h"
+#ifdef dev_err
+#undef dev_err
+#define dev_err dev_err_fb_fatal_delay
+#endif
+#ifdef dev_err_ratelimited
+#undef dev_err_ratelimited
+#define dev_err_ratelimited dev_err_ratelimited_fb_delay
+#endif
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
+#ifdef OPLUS_ARCH_EXTENDS
+// add for dmic power supply
+#include <linux/of_gpio.h>
+#include <linux/regulator/consumer.h>
+#include <linux/pinctrl/consumer.h>
+#endif /* OPLUS_ARCH_EXTENDS */
+
 #define DRV_NAME "canoe-asoc-snd"
 #define __CHIPSET__ "CANOE "
 #define MSM_DAILINK_NAME(name) (__CHIPSET__#name)
@@ -59,7 +78,12 @@
 #define WCD9XXX_MBHC_DEF_BUTTONS    8
 #define CODEC_EXT_CLK_RATE          9600000
 #define DEV_NAME_STR_LEN            32
+#ifndef OPLUS_ARCH_EXTENDS
+/* Modify for headset detect */
 #define WCD_MBHC_HS_V_MAX           1600
+#else /* OPLUS_ARCH_EXTENDS */
+#define WCD_MBHC_HS_V_MAX           1700
+#endif /* OPLUS_ARCH_EXTENDS */
 
 #define WCN_CDC_SLIM_RX_CH_MAX 2
 #define WCN_CDC_SLIM_TX_CH_MAX 2
@@ -76,6 +100,28 @@ enum {
 	WCD939X_DEV_INDEX,
 	WCD9378_DEV_INDEX,
 };
+
+#ifdef OPLUS_ARCH_EXTENDS
+// add for dmic power supply
+enum {
+	DMIC_BIAS_0,
+	DMIC_BIAS_1,
+	DMIC_BIAS_2,
+	DMIC_BIAS_3,
+};
+
+struct dmic_supply_data {
+	struct regulator *supply;
+	int min_uV;
+	int max_uV;
+	int supply_enable_cnt;
+	bool supply_enabled;
+	struct pinctrl_state *bias_enable;
+	struct pinctrl_state *bias_disable;
+	int enable_cnt;
+	struct mutex mlock;
+};
+#endif /* OPLUS_ARCH_EXTENDS */
 
 struct msm_asoc_mach_data {
 	struct snd_info_entry *codec_root;
@@ -98,6 +144,12 @@ struct msm_asoc_mach_data {
 	struct prm_earpa_hw_intf_config upd_config;
 	bool dedicated_wsa2; /* used to define how wsa2 slave devices are used */
 	int wcd_used;
+#ifdef OPLUS_ARCH_EXTENDS
+	// add for dmic power supply
+	int num_dmic_supplies;
+	struct pinctrl *dmic_en_pinctrl;
+	struct dmic_supply_data *dmic_supply;
+#endif /* OPLUS_ARCH_EXTENDS */
 };
 
 static bool is_initial_boot;
@@ -107,6 +159,16 @@ static int dmic_0_1_gpio_cnt;
 static int dmic_2_3_gpio_cnt;
 static int dmic_4_5_gpio_cnt;
 static int dmic_6_7_gpio_cnt;
+
+#if IS_ENABLED(CONFIG_AUDIO_EXTEND_DRV)
+/*Add for oplus extend aduio*/
+extern void extend_codec_i2s_be_dailinks(struct device *dev, struct snd_soc_dai_link *dailink, size_t size);
+extern void extend_codec_register_control(struct snd_soc_card *card);
+#endif /* CONFIG_AUDIO_EXTEND_DRV */
+
+#ifdef OPLUS_ARCH_EXTENDS
+extern void oplus_set_sound_card_init_done(void);
+#endif /* OPLUS_ARCH_EXTENDS */
 
 static void *def_wcd_mbhc_cal(void);
 
@@ -423,6 +485,150 @@ static int msm_dmic_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+#ifdef OPLUS_ARCH_EXTENDS
+// add for dmic power supply
+static int dmic_regulator_enable(struct dmic_supply_data *supply_data, bool enable)
+{
+	int ret = 0;
+
+	if (!supply_data || IS_ERR(supply_data->supply)) {
+		return 0;
+	}
+
+	pr_info("%s: enable %d, cnt %d, current state %d, min_uV=%d, max_uV=%d\n", __func__, enable,
+			supply_data->supply_enable_cnt, supply_data->supply_enabled, supply_data->min_uV, supply_data->max_uV);
+
+	if (enable) {
+		supply_data->supply_enable_cnt++;
+		if (!supply_data->supply_enabled) {
+			if (supply_data->max_uV != 0) {
+				ret = regulator_set_voltage(supply_data->supply, supply_data->min_uV, supply_data->max_uV);
+				if (ret) {
+					pr_err("%s: regulator set vol fail, ret %d\n", __func__, ret);
+				}
+			}
+			ret = regulator_enable(supply_data->supply);
+			if (ret) {
+				pr_err("%s: regulator enable failed, ret %d\n", __func__, ret);
+			} else {
+				supply_data->supply_enabled = true;
+			}
+		}
+	} else {
+		if (supply_data->supply_enable_cnt > 0) {
+			supply_data->supply_enable_cnt--;
+		} else {
+			pr_err("%s: supply_enable_cnt is zero\n", __func__);
+		}
+
+		if (supply_data->supply_enable_cnt == 0 && supply_data->supply_enabled) {
+			ret = regulator_disable(supply_data->supply);
+			if (ret) {
+				pr_err("%s: regulator disable failed, ret %d\n", __func__, ret);
+			}
+			supply_data->supply_enabled = false;
+		}
+	}
+
+	return ret;
+}
+
+static int dmic_power_supply_by_ldo(
+			struct snd_soc_component *component, int micb_num,
+			struct msm_asoc_mach_data *pdata, int event)
+{
+	struct dmic_supply_data *supply_data = NULL;
+	int ret = 0;
+
+	if (!component || !pdata || !pdata->num_dmic_supplies) {
+		dev_info(component->dev, "%s: error parameter\n", __func__);
+		return -EINVAL;
+	}
+
+	if (micb_num < 0 || micb_num >= pdata->num_dmic_supplies) {
+		dev_err(component->dev, "%s: invalid micb_num %d\n", __func__, micb_num);
+		return -EINVAL;
+	}
+
+	dev_info(component->dev, "%s: enter, micb_num=%d, event=%d\n", __func__, micb_num, event);
+
+	supply_data = &pdata->dmic_supply[micb_num];
+	mutex_lock(&supply_data->mlock);
+
+	switch (event) {
+		case SND_SOC_DAPM_PRE_PMU:
+			dmic_regulator_enable(supply_data, true);
+			if (!IS_ERR_OR_NULL(supply_data->bias_enable)) {
+				if (supply_data->enable_cnt == 0) {
+					pinctrl_select_state(pdata->dmic_en_pinctrl, supply_data->bias_enable);
+				}
+				supply_data->enable_cnt++;
+				dev_info(component->dev, "%s: dmic power on, enable_cnt=%d\n", __func__, supply_data->enable_cnt);
+			}
+			break;
+
+		case SND_SOC_DAPM_POST_PMD:
+			if (!IS_ERR_OR_NULL(supply_data->bias_disable)) {
+				if (supply_data->enable_cnt == 1) {
+					pinctrl_select_state(pdata->dmic_en_pinctrl, supply_data->bias_disable);
+				}
+
+				if (supply_data->enable_cnt > 0) {
+					supply_data->enable_cnt--;
+				}
+				dev_info(component->dev, "%s: dmic power off, enable_cnt=%d\n", __func__, supply_data->enable_cnt);
+			}
+			dmic_regulator_enable(supply_data, false);
+			break;
+
+		default:
+			dev_err_ratelimited(component->dev, "%s: invalid DAPM event %d\n", __func__, event);
+			ret = -EINVAL;
+			break;
+	}
+
+	mutex_unlock(&supply_data->mlock);
+
+	return ret;
+}
+
+static int dmic_micbias_ctrl(struct snd_soc_dapm_widget *w,
+			struct snd_kcontrol *kcontrol, int event)
+{
+	int ret = 0;
+	int micb_num;
+	struct msm_asoc_mach_data *pdata = NULL;
+	struct snd_soc_component *component = NULL;
+
+	component = snd_soc_dapm_to_component(w->dapm);
+
+	if (!component || !component->card) {
+		dev_info(component->dev, "%s: component is error\n", __func__);
+		return -EINVAL;
+	}
+
+	pdata = snd_soc_card_get_drvdata(component->card);
+
+	if (!pdata) {
+		dev_info(component->dev, "%s: pdata is error\n", __func__);
+		return -EINVAL;
+	}
+
+	if (strnstr(w->name, "DMIC BIAS0", sizeof("DMIC BIAS0"))) {
+		micb_num = DMIC_BIAS_0;
+	} else if (strnstr(w->name, "DMIC BIAS1", sizeof("DMIC BIAS1"))) {
+		micb_num = DMIC_BIAS_1;
+	} else {
+		dev_info(component->dev, "%s:error parameter\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = dmic_power_supply_by_ldo(component, micb_num, pdata, event);
+
+	return ret;
+}
+#endif /* OPLUS_ARCH_EXTENDS */
+
 static const struct snd_soc_dapm_widget msm_int_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Analog Mic1", NULL),
 	SND_SOC_DAPM_MIC("Analog Mic2", NULL),
@@ -437,6 +643,16 @@ static const struct snd_soc_dapm_widget msm_int_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic5", msm_dmic_event),
 	SND_SOC_DAPM_MIC("Digital Mic6", msm_dmic_event),
 	SND_SOC_DAPM_MIC("Digital Mic7", msm_dmic_event),
+#ifdef OPLUS_ARCH_EXTENDS
+// add for dmic power supply
+	SND_SOC_DAPM_SUPPLY("DMIC BIAS0", SND_SOC_NOPM, 0, 0,
+			dmic_micbias_ctrl,
+			SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+
+	SND_SOC_DAPM_SUPPLY("DMIC BIAS1", SND_SOC_NOPM, 0, 0,
+			dmic_micbias_ctrl,
+			SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+#endif /* OPLUS_ARCH_EXTENDS */
 };
 
 #ifndef CONFIG_AUDIO_BTFM_PROXY
@@ -507,6 +723,8 @@ static void *def_wcd_mbhc_cal(void)
 	btn_high = ((void *)&btn_cfg->_v_btn_low) +
 		(sizeof(btn_cfg->_v_btn_low[0]) * btn_cfg->num_btn);
 
+#ifndef OPLUS_ARCH_EXTENDS
+/* Modify for headset button threshold */
 	btn_high[0] = 75;
 	btn_high[1] = 150;
 	btn_high[2] = 237;
@@ -515,6 +733,16 @@ static void *def_wcd_mbhc_cal(void)
 	btn_high[5] = 500;
 	btn_high[6] = 500;
 	btn_high[7] = 500;
+#else /* OPLUS_ARCH_EXTENDS */
+	btn_high[0] = 130;		/* Hook ,0 ~ 160 Ohm*/
+	btn_high[1] = 131;
+	btn_high[2] = 253;		/* Volume + ,160 ~ 360 Ohm*/
+	btn_high[3] = 425;		/* Volume - ,360 ~ 680 Ohm*/
+	btn_high[4] = 426;
+	btn_high[5] = 426;
+	btn_high[6] = 426;
+	btn_high[7] = 426;
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	return wcd_mbhc_cal;
 }
@@ -1896,6 +2124,11 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev, int w
 		rc = of_property_read_u32(dev->of_node,
 				"qcom,mi2s-audio-intf", &val);
 		if (!rc && val) {
+#if IS_ENABLED(CONFIG_AUDIO_EXTEND_DRV)
+/*Add for oplus extend audio*/
+			extend_codec_i2s_be_dailinks(dev, msm_mi2s_dai_links, ARRAY_SIZE(msm_mi2s_dai_links));
+			pr_info("exchanged mi2s\n");
+#endif /* CONFIG_AUDIO_EXTEND_DRV */
 			memcpy(msm_canoe_dai_links + total_links,
 					msm_mi2s_dai_links,
 					sizeof(msm_mi2s_dai_links));
@@ -1905,6 +2138,11 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev, int w
 		rc = of_property_read_u32(dev->of_node,
 				"qcom,tdm-audio-intf", &val);
 		if (!rc && val) {
+#if IS_ENABLED(CONFIG_AUDIO_EXTEND_DRV)
+/*Add for oplus extend audio*/
+			extend_codec_i2s_be_dailinks(dev, msm_tdm_dai_links, ARRAY_SIZE(msm_tdm_dai_links));
+			pr_info("exchanged tdm\n");
+#endif /* CONFIG_AUDIO_EXTEND_DRV */
 			memcpy(msm_canoe_dai_links + total_links,
 					msm_tdm_dai_links,
 					sizeof(msm_tdm_dai_links));
@@ -2002,6 +2240,16 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev, int w
 		if (of_find_property(dev->of_node, "swr-haptics-unsupported",
 			NULL)) {
 			dev_dbg(dev, "%s(): swr haptics support not present\n", __func__);
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for oplus haptics */
+			if (of_find_property(dev->of_node, "oplus-swr-haptics-supported", NULL)) {
+				dev_info(dev, "%s(): oplus swr haptics support\n", __func__);
+				memcpy(msm_canoe_dai_links + total_links,
+						msm_wsa2_cdc_dma_be_dai_links,
+						sizeof(msm_wsa2_cdc_dma_be_dai_links));
+				total_links += ARRAY_SIZE(msm_wsa2_cdc_dma_be_dai_links);
+			}
+#endif /* OPLUS_ARCH_EXTENDS */
 		} else {
 			memcpy(msm_canoe_dai_links + total_links,
 					msm_swr_haptics_be_dai_links,
@@ -2247,6 +2495,78 @@ static int msm_int_wsa881x_init(struct snd_soc_pcm_runtime *rtd)
 
 }
 
+#ifdef OPLUS_ARCH_EXTENDS
+//add for sp tuning tools get pcmid and miid
+static uint32_t oplus_sp_miid;
+static int oplus_sp_miid_info(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 0xffffffff; /* 16 bit value */
+	return 0;
+}
+
+static int oplus_sp_miid_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = oplus_sp_miid;
+	return 0;
+}
+
+static int oplus_sp_miid_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	oplus_sp_miid = (uint32_t)ucontrol->value.integer.value[0];
+	return 1;
+}
+
+static uint32_t oplus_sp_pcm_id;
+static int oplus_sp_pcm_id_info(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 0xffffffff; /* 16 bit value */
+	return 0;
+}
+
+static int oplus_sp_pcm_id_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = oplus_sp_pcm_id;
+	return 0;
+}
+
+static int oplus_sp_pcm_id_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	oplus_sp_pcm_id = (uint32_t)ucontrol->value.integer.value[0];
+	return 1;
+}
+
+static const struct snd_kcontrol_new oplus_sp_controls[] = {
+	//SP PCMID
+	{
+		.name = "SP PCMID",
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.info = oplus_sp_pcm_id_info,
+		.get = oplus_sp_pcm_id_get,
+		.put = oplus_sp_pcm_id_put,
+	},
+	//SP MIID
+	{
+		.name = "SP MIID",
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.info = oplus_sp_miid_info,
+		.get = oplus_sp_miid_get,
+		.put = oplus_sp_miid_put,
+	},
+};
+#endif /* OPLUS_ARCH_EXTENDS */
+
 static int msm_int_wsa_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_component *lpass_cdc_component = NULL;
@@ -2475,6 +2795,11 @@ static int msm_rx_tx_codec_init(struct snd_soc_pcm_runtime *rtd)
 	}
 	lpass_cdc_info_create_codec_entry(pdata->codec_root, lpass_cdc_component);
 	lpass_cdc_register_wake_irq(lpass_cdc_component, false);
+
+#ifdef OPLUS_ARCH_EXTENDS
+/*add for sp tuning tools get pcmid and miid*/
+	snd_soc_add_component_controls(lpass_cdc_component, oplus_sp_controls, ARRAY_SIZE(oplus_sp_controls));
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	if (pdata->wcd_disabled)
 		goto done;
@@ -2732,6 +3057,92 @@ static int msm_asoc_parse_soundcard_name(struct platform_device *pdev,
 
 	return ret;
 }
+#ifdef OPLUS_ARCH_EXTENDS
+// add for dmic power supply
+static int dmic_power_supply_init(struct platform_device *pdev,
+			struct msm_asoc_mach_data *pdata)
+{
+	int i = 0, len = 0, num_supplies = 0;
+	const char *name = NULL;
+	const __be32 *prop;
+
+	if (!pdev || !pdata) {
+		dev_info(&pdev->dev, "pdev/tx_priv is null\n");
+		return -1;
+	}
+
+	dev_info(&pdev->dev, "enter %s\n", __func__);
+
+	num_supplies = of_property_count_strings(pdev->dev.of_node, "oplus,dmic-supplies");
+	if (num_supplies <= 0) {
+		dev_info(&pdev->dev, "%s: no regulators found\n", __func__);
+		pdata->num_dmic_supplies = 0;
+		return -EINVAL;
+	}
+
+	pdata->num_dmic_supplies = num_supplies;
+	pdata->dmic_supply = devm_kcalloc(&pdev->dev, num_supplies, sizeof(struct dmic_supply_data), GFP_KERNEL);
+	if (!pdata->dmic_supply) {
+		return -ENOMEM;
+	}
+
+	pdata->dmic_en_pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (IS_ERR_OR_NULL(pdata->dmic_en_pinctrl)) {
+		dev_err(&pdev->dev, "%s: Cannot get dmic enable gpio pinctrl:%ld\n", __func__, PTR_ERR(pdata->dmic_en_pinctrl));
+		pdata->dmic_en_pinctrl = NULL;
+		return PTR_ERR(pdata->dmic_en_pinctrl);
+	}
+
+	for (i = 0; i < num_supplies; i++) {
+		char voltage_name[32] = {0};
+		char bias_enable_name[32] = {0};
+		char bias_disable_name[32] = {0};
+
+		if (of_property_read_string_index(pdev->dev.of_node, "oplus,dmic-supplies", i, &name)) {
+			dev_err(&pdev->dev, "%s: Failed to get supply name for index %d\n", __func__, i);
+			continue;
+		}
+
+		snprintf(voltage_name, sizeof(voltage_name), "%s-voltage", name);
+		snprintf(bias_enable_name, sizeof(bias_enable_name), "dmic%d_micbias_pull_high", i);
+		snprintf(bias_disable_name, sizeof(bias_disable_name), "dmic%d_micbias_pull_low", i);
+
+		pdata->dmic_supply[i].supply = devm_regulator_get(&pdev->dev, name);
+		if (IS_ERR(pdata->dmic_supply[i].supply)) {
+			dev_info(&pdev->dev, "%s: Failed to get %s\n", __func__, name);
+		} else {
+			prop = of_get_property(pdev->dev.of_node, voltage_name, &len);
+			if (!prop || (len != (2 * sizeof(__be32)))) {
+				dev_err(&pdev->dev, "%s: %s property\n", __func__, prop ? "invalid format" : "no");
+			} else {
+				pdata->dmic_supply[i].min_uV = be32_to_cpup(&prop[0]);
+				pdata->dmic_supply[i].max_uV = be32_to_cpup(&prop[1]);
+				dev_info(&pdev->dev, "enter %s min_uV=%d, max_uV=%d\n", __func__, pdata->dmic_supply[i].min_uV, pdata->dmic_supply[i].max_uV);
+			}
+		}
+
+		if (!IS_ERR_OR_NULL(pdata->dmic_en_pinctrl)) {
+			pdata->dmic_supply[i].bias_enable = pinctrl_lookup_state(pdata->dmic_en_pinctrl, bias_enable_name);
+			if (IS_ERR_OR_NULL(pdata->dmic_supply[i].bias_enable)) {
+				dev_info(&pdev->dev, "get pin state %s fail\n", bias_enable_name);
+				pdata->dmic_supply[i].bias_enable = NULL;
+			}
+
+			pdata->dmic_supply[i].bias_disable = pinctrl_lookup_state(pdata->dmic_en_pinctrl, bias_disable_name);
+			if (IS_ERR_OR_NULL(pdata->dmic_supply[i].bias_disable)) {
+				dev_info(&pdev->dev, "get pin state %s fail\n", bias_disable_name);
+				pdata->dmic_supply[i].bias_disable = NULL;
+			} else {
+				pinctrl_select_state(pdata->dmic_en_pinctrl, pdata->dmic_supply[i].bias_disable);
+			}
+		}
+
+		mutex_init(&pdata->dmic_supply[i].mlock);
+	}
+
+	return 0;
+}
+#endif
 
 static int msm_asoc_machine_probe(struct platform_device *pdev)
 {
@@ -2863,6 +3274,11 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	if (pdata->dmic67_gpio_p)
 		msm_cdc_pinctrl_set_wakeup_capable(pdata->dmic67_gpio_p, false);
 
+#ifdef OPLUS_ARCH_EXTENDS
+	// add for dmic power supply
+	dmic_power_supply_init(pdev, pdata);
+#endif /* OPLUS_ARCH_EXTENDS */
+
 	msm_common_snd_init(pdev, card);
 
 	/* Register LPASS audio hw vote */
@@ -2884,9 +3300,25 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 
 	is_initial_boot = true;
 
+#ifdef OPLUS_ARCH_EXTENDS
+	oplus_set_sound_card_init_done();
+#endif /* OPLUS_ARCH_EXTENDS */
+
 	/* change card status to ONLINE */
 	dev_dbg(&pdev->dev, "%s: setting snd_card to ONLINE\n", __func__);
 	snd_card_set_card_status(SND_CARD_STATUS_ONLINE);
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+	pr_info("%s: event_id=%u, version:%s\n", __func__, \
+			OPLUS_AUDIO_EVENTID_AUDIO_KERNEL_ERR, AUDIO_KERNEL_FB_VERSION);
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
+#ifdef OPLUS_ARCH_EXTENDS
+/* register kcontrol */
+	extend_codec_register_control(card);
+/* Add for log */
+	dev_info(&pdev->dev, "%s: asoc machine probe done.\n", __func__);
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	return 0;
 err:
@@ -2912,6 +3344,14 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 	msm_common_snd_deinit(common_pdata);
 	snd_event_master_deregister(&pdev->dev);
 	snd_soc_unregister_card(card);
+#ifdef OPLUS_ARCH_EXTENDS
+	// add for dmic power supply
+	if (pdata && pdata->dmic_supply) {
+		for (int i = 0; i < pdata->num_dmic_supplies; i++) {
+			mutex_destroy(&pdata->dmic_supply[i].mlock);
+		}
+	}
+#endif /* OPLUS_ARCH_EXTENDS */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 10, 0)
 	return 0;
 #endif

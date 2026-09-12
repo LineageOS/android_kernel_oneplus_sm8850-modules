@@ -18,6 +18,12 @@
 #include <sound/soc-dapm.h>
 #include <linux/soc/qcom/battery_charger.h>
 
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for decouple haptics driver from snd card */
+static int  haptics_probe_retry = 0;
+static bool is_dummy_device = false;
+#endif /* OPLUS_ARCH_EXTENDS */
+
 #define HAPTICS_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 		SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
 		SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000 |\
@@ -50,6 +56,11 @@
 #define MAX_HAPTICS_VMAX_MV     10000
 #define MAX_CL_HAPTICS_VMAX_MV  8700
 #define VMAX_STEP_MV            50
+
+#ifdef OPLUS_FEATURE_RINGTONE_HAPTIC
+/* Add for control VMAX */
+#define OPLUS_SWR_HAP_VMAX		200
+#endif /* OPLUS_FEATURE_RINGTONE_HAPTIC */
 
 enum pmic_type {
 	PM8350B = 1,
@@ -225,12 +236,19 @@ static int swr_haptics_slave_enable(struct swr_haptics_dev *swr_hap)
 	if (swr_hap->slave_enabled)
 		return 0;
 
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for decouple haptics driver from snd card */
+	if (!IS_ERR(swr_hap->slave_vdd)) {
+#endif /* OPLUS_ARCH_EXTENDS */
 	rc = regulator_enable(swr_hap->slave_vdd);
 	if (rc < 0) {
 		dev_err_ratelimited(swr_hap->dev, "%s: enable swr-slave-vdd failed, rc=%d\n",
 				__func__, rc);
 		return rc;
 	}
+#ifdef OPLUS_ARCH_EXTENDS
+	}
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	dev_dbg(swr_hap->dev, "%s: enable swr-slave-vdd success\n", __func__);
 	swr_hap->slave_enabled = true;
@@ -244,12 +262,19 @@ static int swr_haptics_slave_disable(struct swr_haptics_dev *swr_hap)
 	if (!swr_hap->slave_enabled)
 		return 0;
 
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for decouple haptics driver from snd card */
+	if (!IS_ERR(swr_hap->slave_vdd)) {
+#endif /* OPLUS_ARCH_EXTENDS */
 	rc = regulator_disable(swr_hap->slave_vdd);
 	if (rc < 0) {
 		dev_err_ratelimited(swr_hap->dev, "%s: disable swr-slave-vdd failed, rc=%d\n",
 				__func__, rc);
 		return rc;
 	}
+#ifdef OPLUS_ARCH_EXTENDS
+	}
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	dev_dbg(swr_hap->dev, "%s: disable swr-slave-vdd success\n", __func__);
 	swr_hap->slave_enabled = false;
@@ -481,6 +506,12 @@ static int haptics_vmax_put(struct snd_kcontrol *kcontrol,
 			snd_soc_component_get_drvdata(component);
 
 	swr_hap->vmax = ucontrol->value.integer.value[0];
+#ifdef OPLUS_FEATURE_RINGTONE_HAPTIC
+/* Add for control VMAX */
+	if (swr_hap->vmax > OPLUS_SWR_HAP_VMAX) {
+		swr_hap->vmax = OPLUS_SWR_HAP_VMAX;
+	}
+#endif /* OPLUS_FEATURE_RINGTONE_HAPTIC */
 	pr_debug("%s: vmax %u\n", __func__, swr_hap->vmax);
 
 	return 0;
@@ -515,8 +546,14 @@ static int haptics_set_visense(struct snd_kcontrol *kcontrol,
 }
 
 static const struct snd_kcontrol_new haptics_snd_controls[] = {
+#ifndef OPLUS_FEATURE_RINGTONE_HAPTIC
+/* Modify for change VMAX */
 	SOC_SINGLE_EXT("Haptics Amplitude Step", SND_SOC_NOPM, 0, 100, 0,
 		haptics_vmax_get, haptics_vmax_put),
+#else /* OPLUS_FEATURE_RINGTONE_HAPTIC */
+	SOC_SINGLE_EXT("Haptics Amplitude Step", SND_SOC_NOPM, 0, OPLUS_SWR_HAP_VMAX, 0,
+		haptics_vmax_get, haptics_vmax_put),
+#endif /* OPLUS_FEATURE_RINGTONE_HAPTIC */
 	SOC_SINGLE_EXT("Haptics VISENSE Switch", SND_SOC_NOPM, 0, 1, 0,
 			haptics_get_visense, haptics_set_visense),
 };
@@ -562,6 +599,52 @@ static int haptics_comp_probe(struct snd_soc_component *component)
 static void haptics_comp_remove(struct snd_soc_component *component)
 {
 }
+
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for decouple haptics driver from snd card */
+static int dummy_haptics_comp_probe(struct snd_soc_component *component)
+{
+	return 0;
+}
+
+static int dummy_haptics_vmax_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static int dummy_haptics_vmax_put(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static const struct snd_kcontrol_new dummy_haptics_snd_controls[] = {
+	SOC_SINGLE_EXT("Haptics Amplitude Step", SND_SOC_NOPM, 0, 0, 0,
+		dummy_haptics_vmax_get, dummy_haptics_vmax_put),
+};
+
+static const struct snd_soc_dapm_widget dummy_haptics_comp_dapm_widgets[] = {
+	SND_SOC_DAPM_INPUT("HAP_IN"),
+	SND_SOC_DAPM_SPK("HAP_OUT", NULL),
+};
+
+static const struct snd_soc_component_driver dummy_swr_haptics_component = {
+	.name = "swr-haptics",
+	.probe = dummy_haptics_comp_probe,
+	.remove = haptics_comp_remove,
+	.controls = dummy_haptics_snd_controls,
+	.num_controls = ARRAY_SIZE(dummy_haptics_snd_controls),
+	.dapm_widgets = dummy_haptics_comp_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(dummy_haptics_comp_dapm_widgets),
+};
+
+static struct snd_soc_dai_driver dummy_haptics_dai[] = {
+	{
+		.name = "swr_haptics",
+	},
+};
+#endif /* OPLUS_ARCH_EXTENDS */
 
 static const struct snd_soc_component_driver swr_haptics_component = {
 	.name = "swr-haptics",
@@ -787,10 +870,20 @@ static int swr_haptics_probe(struct swr_device *sdev)
 	swr_hap->slave_vdd = devm_regulator_get(swr_hap->dev, "swr-slave");
 	if (IS_ERR(swr_hap->slave_vdd)) {
 		rc = PTR_ERR(swr_hap->slave_vdd);
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for decouple haptics driver from snd card */
+		dev_err(swr_hap->dev, "%s: get swr-slave-supply failed, rc=%d\n",
+				__func__, rc);
+		if (rc != -EPROBE_DEFER)
+			goto clean;
+		else
+			rc = 0;
+#else /* OPLUS_ARCH_EXTENDS */
 		if (rc != -EPROBE_DEFER)
 			dev_err(swr_hap->dev, "%s: get swr-slave-supply failed, rc=%d\n",
 					__func__, rc);
 		goto clean;
+#endif /* OPLUS_ARCH_EXTENDS */
 	}
 
 	if (of_find_property(node, "qcom,hpwr-supply", NULL)) {
@@ -821,8 +914,25 @@ static int swr_haptics_probe(struct swr_device *sdev)
 	}
 
 	rc = swr_haptics_slave_enumeration(swr_hap);
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for decouple haptics driver from snd card */
+	if (rc < 0) {
+		if (haptics_probe_retry < 5) {
+			haptics_probe_retry++;
+			rc = -EPROBE_DEFER;
+			goto error;
+		}
+
+		rc = snd_soc_register_component(&sdev->dev,
+				&dummy_swr_haptics_component, dummy_haptics_dai, ARRAY_SIZE(dummy_haptics_dai));
+		haptics_probe_retry = 0;
+		is_dummy_device = true;
+		goto error;
+	}
+#else /* OPLUS_ARCH_EXTENDS */
 	if (rc < 0)
 		goto error;
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	swr_hap->regmap = devm_regmap_init_swr(sdev, &swr_hap_regmap_config);
 	if (IS_ERR(swr_hap->regmap)) {
@@ -941,7 +1051,12 @@ static int swr_haptics_suspend(struct device *dev)
 	swr_hap = swr_get_dev_data(to_swr_device(dev));
 	if (!swr_hap) {
 		dev_err_ratelimited(dev, "%s: no data for swr_hap\n", __func__);
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for decouple haptics driver from snd card */
+		return is_dummy_device ? 0: -ENODEV;
+#else
 		return -ENODEV;
+#endif
 	}
 
 	return rc;
@@ -955,7 +1070,12 @@ static int swr_haptics_resume(struct device *dev)
 	swr_hap = swr_get_dev_data(to_swr_device(dev));
 	if (!swr_hap) {
 		dev_err_ratelimited(dev, "%s: no data for swr_hap\n", __func__);
+#ifdef OPLUS_ARCH_EXTENDS
+/* Add for decouple haptics driver from snd card */
+		return is_dummy_device ? 0: -ENODEV;
+#else
 		return -ENODEV;
+#endif
 	}
 
 	return rc;

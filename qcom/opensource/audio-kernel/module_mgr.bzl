@@ -1,4 +1,4 @@
-load(":repo_paths.bzl", "soc_label")
+load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_module", "kernel_module_group")
 load("@rules_pkg//pkg:install.bzl", "pkg_install")
 load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
@@ -64,7 +64,7 @@ def _define_target_modules(target, variant, registry, modules, product = None, c
         soc_label("{}_{}/drivers/soc/qcom/pdr_interface".format(target, variant)),
         soc_label("{}_{}/drivers/remoteproc/rproc_qcom_common".format(target, variant)),
         soc_label("{}_{}/drivers/base/regmap/qti-regmap-debugfs".format(target, variant)),
-        soc_label("{}_{}/drivers/power/supply/qti_battery_charger".format(target, variant)),
+        modules_label("oplus/kernel/charger/bazel:{}_{}_oplus_chg_v2".format(target, variant)),
         soc_label("{}_{}/drivers/soc/qcom/wcd_usbss_i2c".format(target, variant)),
 	    soc_label("{}_{}/drivers/soc/qcom/fsa4480_i2c".format(target, variant)),
         soc_label("{}_{}/kernel/trace/qcom_ipc_logging".format(target, variant)),
@@ -72,11 +72,18 @@ def _define_target_modules(target, variant, registry, modules, product = None, c
     ] + registry.hdrs)
     kernel_build = soc_label("{}_{}_base_kernel".format(target, variant))
 
+    if "CONFIG_OPLUS_FEATURE_MM_FEEDBACK" in options:
+        headers = headers + [modules_label("oplus/kernel/multimedia/feedback/bazel:oplus_mm_kevent_fb")]
+
     submodule_rules = []
     for module in enabled_modules:
         rule_name = "{}_{}".format(rule_prefix, module.name)
         srcs = _get_module_srcs(module, options)
-        deps = headers + [dep_formatter(dep) for dep in module.deps]
+        deps = headers + [
+            dep_formatter(dep)
+            for dep in module.deps
+            if "OPLUS_ARCH_EXTENDS" in options or not dep.startswith(":%b_oplus_")
+        ]
 
         if not srcs:
             continue

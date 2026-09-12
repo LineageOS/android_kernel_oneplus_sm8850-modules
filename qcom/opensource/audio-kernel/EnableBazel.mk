@@ -89,6 +89,18 @@ endif
 ifeq ($(call is-board-platform-in-list, malabar),true)
 LOCAL_MODULE_KO_DIRS += asoc/codecs/wsa881x_analog_dlkm.ko
 endif
+#ifdef OPLUS_ARCH_EXTENDS
+#add for oplus audio extends driver
+LOCAL_MODULE_KO_DIRS += oplus/qcom/oplus_audio_extend.ko
+LOCAL_MODULE_KO_DIRS += oplus/codecs/tfa98xx-v6/oplus_audio_tfa98xx_v6.ko
+LOCAL_MODULE_KO_DIRS += oplus/codecs/aw882xx/oplus_audio_aw882xx.ko
+# add for oplus audio daemon kernel
+LOCAL_MODULE_KO_DIRS += oplus/oplus_audio_daemon/oplus_audio_daemon.ko
+# add for oplus audio daemon kernel
+LOCAL_MODULE_KO_DIRS += oplus/oplus_audio_netlink/oplus_audio_netlink.ko
+# add for typec switch driver
+LOCAL_MODULE_KO_DIRS += oplus/qcom/oplus_typec_switch_i2c/oplus_typec_switch_i2c.ko
+#endif /* OPLUS_ARCH_EXTENDS */
 endif
 
 ifeq ($(call is-board-platform-in-list,blair),true)
