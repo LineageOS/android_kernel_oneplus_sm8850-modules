@@ -605,7 +605,11 @@ static int cam_flash_ops(struct cam_flash_ctrl *flash_ctrl,
 						i, curr, rc);
 					return rc;
 				}
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+				rc = led_set_flash_timeout(flash_ctrl->pmic_flcdev[i], 1200000);
+#else
 				rc = led_set_flash_timeout(flash_ctrl->pmic_flcdev[i], 1000000);
+#endif
 				if (rc) {
 					CAM_ERR(CAM_FLASH,
 						"LED_Flash[%d]: set flash timeout failed, rc=%d",

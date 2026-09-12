@@ -41,6 +41,15 @@
 #define CSIPHY_VERSION_V240                       0x240
 #define CSIPHY_VERSION_V241                       0x241
 #define CSIPHY_VERSION_V242                       0x242
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#define CSIPHY_VERSION_V240_INFINITI_MAIN         0x1241
+#define CSIPHY_VERSION_V240_INFINITI_TELE         0x1242
+#define CSIPHY_VERSION_V240_LAFA_MAIN             0x1243
+#define CSIPHY_VERSION_V240_LAFA_WIDE             0x1244
+#define CSIPHY_VERSION_V240_LAFA_FRONT            0x1245
+#define CSIPHY_VERSION_V240_LAFA_TELE             0x1246
+#define CSIPHY_VERSION_V240_MACAN_MAIN            0x1247
+#endif
 
 /**
  * @csiphy_dev: CSIPhy device structure

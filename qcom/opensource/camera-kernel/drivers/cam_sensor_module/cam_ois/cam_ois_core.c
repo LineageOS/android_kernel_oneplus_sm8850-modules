@@ -15,6 +15,9 @@
 #include "cam_common_util.h"
 #include "cam_packet_util.h"
 #include "cam_mem_mgr_api.h"
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "oplus_cam_ois.h"
+#endif
 
 #define CAM_OIS_FW_VERSION_CHECK_MASK 0x1
 
@@ -206,7 +209,11 @@ cci_failure:
  *
  * Returns success or failure
  */
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+int cam_ois_power_down(struct cam_ois_ctrl_t *o_ctrl)
+#else
 static int cam_ois_power_down(struct cam_ois_ctrl_t *o_ctrl)
+#endif
 {
 	int32_t                         rc = 0;
 	struct cam_sensor_power_ctrl_t  *power_info;
@@ -240,6 +247,9 @@ static int cam_ois_power_down(struct cam_ois_ctrl_t *o_ctrl)
 
 	return rc;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_ois_power_down);
+#endif
 
 static int cam_ois_update_time(struct i2c_settings_array *i2c_set,
 	enum cam_endianness_type endianness)
@@ -1280,7 +1290,11 @@ release_firmware:
  *
  * Returns success or failure
  */
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
+#else
 static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
+#endif
 {
 	int32_t                         rc = 0;
 	int32_t                         i = 0;
@@ -1821,6 +1835,9 @@ put_ref:
 	cam_mem_put_cpu_buf(dev_config.packet_handle);
 	return rc;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_ois_pkt_parse);
+#endif
 
 void cam_ois_shutdown(struct cam_ois_ctrl_t *o_ctrl)
 {
@@ -1904,6 +1921,9 @@ void cam_ois_shutdown(struct cam_ois_ctrl_t *o_ctrl)
 
 	o_ctrl->cam_ois_state = CAM_OIS_INIT;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_ois_shutdown);
+#endif
 
 /**
  * cam_ois_driver_cmd - Handle ois cmds
@@ -2081,3 +2101,6 @@ release_mutex:
 	mutex_unlock(&(o_ctrl->ois_mutex));
 	return rc;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_ois_driver_cmd);
+#endif

@@ -72,6 +72,7 @@ def _define_module(target, variant):
             modules_label("qcom/opensource/securemsm-kernel:{}_smcinvoke_dlkm".format(tv)),
             modules_label("qcom/opensource/securemsm-kernel:{}_smmu_proxy_dlkm".format(tv)),
 			modules_label("qcom/opensource/mmrm-driver:{}_mmrm_driver".format(tv)),
+            modules_label("oplus/kernel/dft/bazel:oplus_bsp_dft_kernel_fb"),
         ])
     ddk_module(
         name = "{}_camera".format(tv),
@@ -291,7 +292,18 @@ def _define_module(target, variant):
                     "drivers/cam_cre/cam_cre_context.c",
                 ],
            },
+            "CONFIG_SPECTRA_OPLUS": {
+                True: [
+                    "drivers/oplus/cam_sensor_module/cam_module_utils/cam_kevent_fb_custom.c",
+                    "drivers/oplus/cam_sensor_module/cam_module_utils/cam_trace_custom.c",
+                    "drivers/oplus/cam_sensor_module/cam_link/oplus_cam_eeprom.c",
+                    "drivers/oplus/cam_sensor_module/cam_link/oplus_cam_sensor.c",
+                    "drivers/oplus/cam_sensor_module/cam_link/oplus_cam_ois.c",
+                    "drivers/oplus/cam_sensor_module/cam_link/oplus_cam_actuator.c",
+                ],
+            },
         },
+        local_defines = ["OPLUS_FEATURE_CAMERA_COMMON", "FEATURE_ENABLE=1"],
         copts = ["-include", "$(location :camera_banner)"],
         deps = base_deps + deps,
         kconfig = "Kconfig",

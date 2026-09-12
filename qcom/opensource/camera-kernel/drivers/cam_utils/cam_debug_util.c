@@ -310,3 +310,7 @@ void cam_print_log(int type, unsigned long long module, int tag, const char *fun
 		line, buf);
 	va_end(args);
 }
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_print_log);
+#endif

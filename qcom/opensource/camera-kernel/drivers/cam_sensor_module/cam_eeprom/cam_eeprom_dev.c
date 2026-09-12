@@ -162,12 +162,19 @@ static const struct v4l2_subdev_internal_ops cam_eeprom_internal_ops = {
 	.close = cam_eeprom_subdev_close,
 };
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+struct v4l2_subdev_core_ops cam_eeprom_subdev_core_ops = {
+#else
 static struct v4l2_subdev_core_ops cam_eeprom_subdev_core_ops = {
+#endif
 	.ioctl = cam_eeprom_subdev_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl32 = cam_eeprom_init_subdev_do_ioctl,
 #endif
 };
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_eeprom_subdev_core_ops);
+#endif
 
 static struct v4l2_subdev_ops cam_eeprom_subdev_ops = {
 	.core = &cam_eeprom_subdev_core_ops,

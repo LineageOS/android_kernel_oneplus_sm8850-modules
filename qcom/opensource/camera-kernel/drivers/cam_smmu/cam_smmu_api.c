@@ -2681,13 +2681,22 @@ void cam_smmu_buffer_tracker_putref(struct list_head *track_list)
 
 	if (iommu_cb_set.is_track_buf_disabled)
 		return;
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (!track_list || list_empty(track_list) || (!track_list->next || !track_list->prev))
+#else
 	if (!track_list || list_empty(track_list))
+#endif
 		return;
 
 	list_for_each_entry_safe(buffer_tracker, temp, track_list, list) {
 		if (!buffer_tracker || !buffer_tracker->ref_count)
 			continue;
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+        if (buffer_tracker->list.next == NULL || buffer_tracker->list.prev == NULL) {
+            CAM_ERR(CAM_SMMU, "[SMMU_BT] Corrupted list node");
+            continue;
+        }
+#endif
 		if (refcount_dec_and_test(&buffer_tracker->ref_count->refcount))
 			CAM_ERR(CAM_SMMU,
 				"[SMMU_BT] Unexpected - buffer reference [fd: 0x%x ino: 0x%x cb: %s] zeroed prior to unmap invocation",
@@ -2705,6 +2714,7 @@ void cam_smmu_buffer_tracker_putref(struct list_head *track_list)
 		cam_smmu_util_return_map_entry(buffer_tracker);
 
 	}
+
 }
 EXPORT_SYMBOL(cam_smmu_buffer_tracker_putref);
 

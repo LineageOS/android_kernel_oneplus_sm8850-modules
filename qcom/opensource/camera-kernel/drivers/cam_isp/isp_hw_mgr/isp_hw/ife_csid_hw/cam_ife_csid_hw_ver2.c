@@ -28,6 +28,9 @@
 #include "cam_vmrm_interface.h"
 #include "cam_mem_mgr_api.h"
 #include "cam_worker_wrapper_api.h"
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include <cam_kevent_fb_custom.h>
+#endif
 
 /* CSIPHY TPG VC/DT values */
 #define CAM_IFE_CPHY_TPG_VC_VAL                         0x0
@@ -1638,9 +1641,17 @@ static inline int cam_ife_csid_ver2_rx_err_process_top_half(
 
 		if ((evt_bitmap[rx_idx] & BIT_ULL(CAM_IFE_CSID_RX_ERROR_CRC)) &&
 			(*status & BIT(bit_pos[CAM_IFE_CSID_RX_ERROR_CRC]))) {
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			CAM_INFO(CAM_ISP, "CRC top, err_irq_count[%d], err_threshodl[%d]",
+				csid_hw->counters.crc_error_irq_count, csid_hw->crc_error_threshold);
+#endif
 			csid_hw->counters.crc_error_irq_count++;
 			if (csid_hw->counters.crc_error_irq_count > csid_hw->crc_error_threshold)
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+				CAM_INFO(CAM_ISP,
+#else
 				CAM_DBG(CAM_ISP,
+#endif
 					"CSID[%u] Recoverable CRC Error Count: %u, CRC Error threshold: %u",
 					csid_hw->hw_intf->hw_idx,
 					csid_hw->counters.crc_error_irq_count,
@@ -2131,6 +2142,9 @@ static int cam_ife_csid_ver2_rx_err_process_bottom_half(
 	uint32_t                                         event_type = 0;
 	size_t                                           len = 0, i;
 	uint32_t                                         val = 0;
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	char fb_payload[PAYLOAD_LENGTH] = {0};
+#endif
 	uint64_t                                        *evt_bitmap = NULL;
 	uint8_t                                         *bit_pos = NULL;
 	uint32_t                                         irq_reg_val = payload->irq_reg_val;
@@ -2362,6 +2376,9 @@ static int cam_ife_csid_ver2_rx_err_process_bottom_half(
 			}
 			CAM_ERR(CAM_ISP, "CSID[%u] Fatal Errors: %s",
 				csid_hw->hw_intf->hw_idx, log_buf);
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			KEVENT_FB_CRC_FAILED(fb_payload, "crc error", (csid_hw->rx_cfg.phy_sel - 1));
+#endif
 		}
 
 		rx_irq_status |= irq_status;
@@ -2387,6 +2404,13 @@ static int cam_ife_csid_ver2_rx_err_process_bottom_half(
 		if ((evt_bitmap[rx_idx] & BIT_ULL(CAM_IFE_CSID_RX_ERROR_CRC)) &&
 			(irq_status & BIT(bit_pos[CAM_IFE_CSID_RX_ERROR_CRC]))) {
 			event_type |= CAM_ISP_HW_ERROR_CSID_PKT_PAYLOAD_CORRUPTED;
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			CAM_INFO(CAM_ISP, "CRC bh: enable[%d], err_irq_count[%d], err_threshold[%d]",
+				csid_hw->debug_info.cdr_sweep_debug_enabled,
+				csid_hw->counters.crc_error_irq_count,
+				csid_hw->crc_error_threshold);
+#endif
 
 			/* Only print the CRC error logs when reaching the threshold/sweep test */
 			if (csid_hw->debug_info.cdr_sweep_debug_enabled ||
@@ -2422,6 +2446,9 @@ static int cam_ife_csid_ver2_rx_err_process_bottom_half(
 				CAM_ERR(CAM_ISP, "CSID[%u] Partly fatal errors: %s",
 					csid_hw->hw_intf->hw_idx, log_buf);
 			}
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+				KEVENT_FB_CRC_FAILED(fb_payload, "crc error", (csid_hw->rx_cfg.phy_sel - 1));
+#endif
 		}
 
 		rx_irq_status |= irq_status;

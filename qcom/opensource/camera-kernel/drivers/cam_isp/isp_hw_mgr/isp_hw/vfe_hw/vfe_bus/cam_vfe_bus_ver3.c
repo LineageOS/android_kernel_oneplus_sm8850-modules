@@ -4272,9 +4272,29 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args, uint32_t arg_s
 				cam_vfe_bus_ver3_update_ubwc_regs(wm_data,
 					&wm_data->ubwc_cfg_data,
 					reg_val_pair, i, &j);
-
 			}
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			if ((wm_data->out_rsrc_data->mc_based ||
+				wm_data->out_rsrc_data->cntxt_cfg_except) &&
+				wm_data->mc_data[hw_cntxt_id].ubwc_cfg_data.ubwc_mode_cfg) {
+				cam_vfe_bus_ver3_update_ubwc_meta_addr(
+					reg_val_pair, &j,
+					wm_data,
+					update_buf->wm_update->image_buf[i]);
+				CAM_DBG(CAM_ISP, "MC VFE:%u WM:%d ubwc meta addr 0x%llx",
+					bus_priv->common_data.core_index, wm_data->index,
+					update_buf->wm_update->image_buf[i]);
 
+			} else if (wm_data->ubwc_cfg_data.ubwc_mode_cfg) {
+				cam_vfe_bus_ver3_update_ubwc_meta_addr(
+					reg_val_pair, &j,
+					wm_data,
+					update_buf->wm_update->image_buf[i]);
+				CAM_DBG(CAM_ISP, "VFE:%u WM:%d ubwc meta addr 0x%llx",
+					bus_priv->common_data.core_index, wm_data->index,
+					update_buf->wm_update->image_buf[i]);
+			}
+#else
 			/* UBWC meta address */
 			cam_vfe_bus_ver3_update_ubwc_meta_addr(
 				reg_val_pair, &j,
@@ -4283,6 +4303,7 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args, uint32_t arg_s
 			CAM_DBG(CAM_ISP, "VFE:%u WM:%d ubwc meta addr 0x%llx",
 				bus_priv->common_data.core_index, wm_data->index,
 				update_buf->wm_update->image_buf[i]);
+#endif
 		}
 
 		frame_inc = stride * slice_h;
@@ -5522,6 +5543,10 @@ static int cam_vfe_bus_ver3_dump_wm_mid_info(
 	/* Iterate through all write masters in the output resource */
 	for (num_wm = 0; num_wm < out_rsrc_data->num_wm; num_wm++) {
 		wm_data = out_rsrc_data->wm_res[num_wm]->res_priv;
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		if (!wm_data)
+			continue;
+#endif
 
 		if (wm_data == NULL) {
 			CAM_ERR(CAM_ISP, "WM:%d data is NULL at %d", i, num_wm);

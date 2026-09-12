@@ -290,6 +290,9 @@ static void __cam_req_mgr_find_dev_name(
 	struct cam_req_mgr_core_link *link,
 	int64_t req_id, uint32_t pd, uint32_t masked_val)
 {
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	char trace[64] = {0};
+#endif
 	int i = 0;
 	struct cam_req_mgr_connected_device *dev = NULL;
 
@@ -298,6 +301,32 @@ static void __cam_req_mgr_find_dev_name(
 		if (dev->dev_info.p_delay == pd) {
 			if (masked_val & BIT(dev->dev_bit))
 				continue;
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			if (link->work_congestion) {
+				CAM_INFO_RATE_LIMIT(CAM_CRM,
+					"WQ congestion, Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %u",
+					req_id, link->link_hdl, pd,
+					dev->dev_info.name, link->open_req_cnt);
+				snprintf(trace, sizeof(trace), "KMD %d_4 Skip Frame", link->link_hdl);
+				trace_long(trace, req_id);
+				trace_int(trace, 0);
+				trace_begin_end("WQ congestion, Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %d_%d_%s open_req count: %d",
+					req_id, link->link_hdl, pd,
+					dev->dev_info.dev_id, dev->dev_info.dev_hdl, dev->dev_info.name, link->open_req_cnt);
+			}
+			else {
+				CAM_INFO(CAM_CRM,
+					"Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %u",
+					req_id, link->link_hdl, pd,
+					dev->dev_info.name, link->open_req_cnt);
+				snprintf(trace, sizeof(trace), "KMD %d_4 Skip Frame", link->link_hdl);
+				trace_long(trace, req_id);
+				trace_int(trace, 0);
+				trace_begin_end("Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %d_%d_%s open_req count: %d",
+					req_id, link->link_hdl, pd,
+					dev->dev_info.dev_id, dev->dev_info.dev_hdl, dev->dev_info.name, link->open_req_cnt);
+			}
+#else
 			if (link->work_congestion)
 				CAM_INFO_RATE_LIMIT(CAM_CRM,
 					"WORKER congestion, Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %u",
@@ -308,6 +337,7 @@ static void __cam_req_mgr_find_dev_name(
 					"Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %u",
 					req_id, link->link_hdl, pd,
 					dev->dev_info.name, link->open_req_cnt);
+#endif
 		}
 	}
 }
@@ -431,7 +461,7 @@ static int __cam_req_mgr_notify_frame_skip(
 	struct cam_req_mgr_connected_device *dev = NULL;
 	struct cam_req_mgr_tbl_slot         *slot = NULL;
 	bool                                 frame_duration_changing = false;
-	struct cam_req_mgr_link_evt_data     evt_data;
+	struct cam_req_mgr_link_evt_data     evt_data = {0};
 
 	apply_data = link->req.prev_apply_data;
 
@@ -1246,13 +1276,16 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 	int64_t                              req_applied_to_min_pd = -1;
 	struct cam_req_mgr_connected_device *dev = NULL, *tmp_dev;
 	struct cam_req_mgr_apply_request     apply_req;
-	struct cam_req_mgr_link_evt_data     evt_data;
+	struct cam_req_mgr_link_evt_data     evt_data = {0};
 	struct cam_req_mgr_tbl_slot          *slot = NULL;
 	struct cam_req_mgr_slot              *req_slot = NULL;
 	struct cam_req_mgr_apply             *apply_data = NULL;
 	struct cam_req_mgr_apply             *prev_apply_data = NULL;
 	struct cam_req_mgr_state_monitor     state;
 	bool                                 frame_duration_changing = false;
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	char trace[64] = {0};
+#endif
 
 	apply_req.link_hdl = link->link_hdl;
 	apply_req.report_if_bubble = 0;
@@ -1557,6 +1590,11 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 				req_applied_to_min_pd = apply_req.request_id;
 
 			trace_cam_req_mgr_apply_request(link, &apply_req, dev);
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			snprintf(trace, sizeof(trace), "KMD %d_5 ApplyRequest %d_%s", apply_req.link_hdl, dev->dev_info.dev_id, dev->dev_info.name);
+			trace_long(trace, apply_req.request_id);
+			trace_int(trace, 0);
+#endif
 		}
 	}
 
@@ -2237,7 +2275,9 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_apply            *apply_data = NULL;
 	struct cam_req_mgr_core_link
 		*sync_link[MAXIMUM_LINKS_PER_SESSION - 1];
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	char trace[64] = {0};
+#endif
 	session = (struct cam_req_mgr_core_session *)link->parent;
 	if (!session) {
 		CAM_WARN(CAM_CRM, "session ptr NULL %x", link->link_hdl);
@@ -2273,6 +2313,22 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 		in_q->slot[in_q->rd_idx].status, link->link_hdl,
 		in_q->slot[in_q->rd_idx].additional_timeout, trigger);
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	snprintf(trace, sizeof(trace), "KMD %d_3 Process Request %d", link->link_hdl, trigger);
+	trace_long(trace, in_q->slot[in_q->rd_idx].req_id);
+	trace_int(trace, 0);
+	if (in_q->slot[in_q->rd_idx].req_id == -1) {
+		memset(trace, 0, sizeof(trace));
+		snprintf(trace, sizeof(trace), "KMD %d_4 Skip Frame", link->link_hdl);
+		trace_long(trace, in_q->slot[in_q->rd_idx].req_id);
+		trace_int(trace, 0);
+		trace_begin_end("%s Req[%lld] idx %d req_status %d link_hdl %x wd_timeout %d ms trigger:%d",
+			((trigger == CAM_TRIGGER_POINT_SOF) ? "SOF" : "EOF"),
+			in_q->slot[in_q->rd_idx].req_id, in_q->rd_idx,
+			in_q->slot[in_q->rd_idx].status, link->link_hdl,
+			in_q->slot[in_q->rd_idx].additional_timeout, trigger);
+	}
+#endif
 	slot = &in_q->slot[in_q->rd_idx];
 
 	if ((trigger != CAM_TRIGGER_POINT_SOF) &&
@@ -3507,7 +3563,9 @@ int cam_req_mgr_process_add_req(void *priv, void *data)
 	struct cam_req_mgr_slot             *link_slot = NULL, *next_slot = NULL;
 	struct cam_req_mgr_state_monitor     state;
 	struct cam_req_mgr_link_evt_data     evt_data = {0};
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	char trace[64] = {0};
+#endif
 	if (!data || !priv) {
 		CAM_ERR(CAM_CRM, "input args NULL %pK %pK", data, priv);
 		rc = -EINVAL;
@@ -3706,6 +3764,12 @@ int cam_req_mgr_process_add_req(void *priv, void *data)
 		slot->req_ready_map, link->link_hdl);
 
 	trace_cam_req_mgr_add_req(link, idx, add_req, tbl, device);
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	snprintf(trace, sizeof(trace), "KMD %d_2 AddRequest %d_%s", add_req->link_hdl, device->dev_info.dev_id, device->dev_info.name);
+	trace_long(trace, add_req->req_id);
+	trace_int(trace, 0);
+#endif
 
 	if (slot->req_ready_map == tbl->dev_mask) {
 		CAM_DBG(CAM_REQ|CAM_CRM,
@@ -4171,6 +4235,13 @@ static int cam_req_mgr_cb_add_req(struct cam_req_mgr_add_request *add_req)
 		__cam_req_mgr_dev_handle_to_name(add_req->dev_hdl, link),
 		add_req->dev_hdl, add_req->req_id, add_req->trigger_eof,
 		link->state, link->link_hdl);
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	trace_begin_end("ReqMgr AddRequest dev name %s dev_hdl %d dev req %lld, skip_before_applying %d link_state %d",
+		__cam_req_mgr_dev_handle_to_name(add_req->dev_hdl, link),
+		add_req->dev_hdl, add_req->req_id, add_req->trigger_eof,
+		link->state);
+#endif
 
 	mutex_lock(&link->lock);
 
@@ -4674,7 +4745,7 @@ static int cam_req_mgr_cb_notify_msg(
 	struct cam_req_mgr_core_link        *link = NULL;
 	struct cam_req_mgr_req_queue        *in_q = NULL;
 	struct cam_req_mgr_connected_device *dev = NULL;
-	struct cam_req_mgr_link_evt_data     evt_data;
+	struct cam_req_mgr_link_evt_data     evt_data = {0};
 	uint64_t                             frame_duration_ms;
 
 	if (!msg) {
@@ -5306,8 +5377,13 @@ int cam_req_mgr_link(struct cam_req_mgr_ver_info *link_info)
 	spin_unlock_bh(&link->link_state_spin_lock);
 
 	/* Create worker for current link */
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	snprintf(buf, sizeof(buf), "%x-%x",
 		link_info->u.link_info_v1.session_hdl, link->link_hdl);
+#else
+	snprintf(buf, sizeof(buf), "CRMCORE_%x-%x",
+		link_info->u.link_info_v1.session_hdl, link->link_hdl);
+#endif
 
 	worker_init_args.name = buf;
 	worker_init_args.num_tasks = CRM_WORKER_NUM_TASKS;
@@ -5424,8 +5500,13 @@ int cam_req_mgr_link_v2(struct cam_req_mgr_ver_info *link_info)
 	spin_unlock_bh(&link->link_state_spin_lock);
 
 	/* Create worker for current link */
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	snprintf(buf, sizeof(buf), "%x-%x",
 		link_info->u.link_info_v2.session_hdl, link->link_hdl);
+#else
+	snprintf(buf, sizeof(buf), "CRMCORE_%x-%x",
+		link_info->u.link_info_v2.session_hdl, link->link_hdl);
+#endif
 
 	worker_init_args.name = buf;
 	worker_init_args.num_tasks = CRM_WORKER_NUM_TASKS;
@@ -5591,6 +5672,9 @@ int cam_req_mgr_schedule_request_v2(
 	struct cam_req_mgr_core_session     *session = NULL;
 	struct cam_req_mgr_core_sched_req    sched;
 	struct cam_req_mgr_core_link        *sync_links[MAXIMUM_LINKS_PER_SESSION];
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	char trace[64] = {0};
+#endif
 
 	mutex_lock(&g_crm_core_dev->crm_lock);
 	link = cam_get_link_priv(sched_req->link_hdl);
@@ -5680,6 +5764,13 @@ int cam_req_mgr_schedule_request_v2(
 
 	CAM_DBG(CAM_REQ|CAM_CRM, "Open req %lld on link 0x%x with sync_mode %d",
 		sched_req->req_id, sched_req->link_hdl, sched_req->sync_mode);
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	snprintf(trace, sizeof(trace), "KMD %d_1 OpenRequest", sched_req->link_hdl);
+	trace_long(trace, sched_req->req_id);
+	trace_int(trace, 0);
+#endif
+
 end:
 	mutex_unlock(&g_crm_core_dev->crm_lock);
 	return rc;
@@ -5694,6 +5785,9 @@ int cam_req_mgr_schedule_request_v3(
 	struct cam_req_mgr_core_session     *session = NULL;
 	struct cam_req_mgr_core_sched_req    sched;
 	struct cam_req_mgr_core_link        *sync_links[MAXIMUM_LINKS_PER_SESSION];
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	char trace[64] = {0};
+#endif
 
 	mutex_lock(&g_crm_core_dev->crm_lock);
 
@@ -5783,6 +5877,11 @@ int cam_req_mgr_schedule_request_v3(
 
 	CAM_DBG(CAM_REQ|CAM_CRM, "Open req %lld on link 0x%x with sync_mode %d",
 		sched_req->req_id, sched_req->link_hdl, sched_req->sync_mode);
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	snprintf(trace, sizeof(trace), "KMD %d_1 OpenRequest", sched_req->link_hdl);
+	trace_long(trace, sched_req->req_id);
+	trace_int(trace, 0);
+#endif
 end:
 	mutex_unlock(&g_crm_core_dev->crm_lock);
 	return rc;

@@ -215,3 +215,8 @@ config SPECTRA_CRE
 	  compilation. Camera CRE module will be functional.
 	  This enables CRE driver code files
 	  which interacts with CRE HW.
+
+config SPECTRA_OPLUS
+	bool "enable oplus camera src files"
+	help
+		This config enables oplus camera src files

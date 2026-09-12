@@ -8,6 +8,9 @@
 #include "cam_sensor_i2c.h"
 #include "cam_sensor_i3c.h"
 #include <linux/pm_runtime.h>
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "cam_trace.h"
+#endif
 
 int32_t camera_io_dev_poll(struct camera_io_master *io_master_info,
 	uint32_t addr, uint16_t data, uint32_t data_mask,
@@ -112,6 +115,9 @@ int32_t camera_io_dev_read(struct camera_io_master *io_master_info,
 
 	return -EINVAL;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(camera_io_dev_read);
+#endif
 
 int32_t camera_io_dev_read_seq(struct camera_io_master *io_master_info,
 	uint32_t addr, uint8_t *data,
@@ -144,6 +150,9 @@ int32_t camera_io_dev_read_seq(struct camera_io_master *io_master_info,
 
 	return -EINVAL;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(camera_io_dev_read_seq);
+#endif
 
 int32_t camera_io_dev_write(struct camera_io_master *io_master_info,
 	struct cam_sensor_i2c_reg_setting *write_setting)
@@ -175,6 +184,9 @@ int32_t camera_io_dev_write(struct camera_io_master *io_master_info,
 
 	return -EINVAL;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(camera_io_dev_write);
+#endif
 
 int32_t camera_io_dev_write_continuous(struct camera_io_master *io_master_info,
 	struct cam_sensor_i2c_reg_setting *write_setting,
@@ -210,6 +222,9 @@ int32_t camera_io_dev_write_continuous(struct camera_io_master *io_master_info,
 
 	return -EINVAL;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(camera_io_dev_write_continuous);
+#endif
 
 int32_t camera_io_init(struct camera_io_master *io_master_info)
 {
@@ -289,6 +304,9 @@ int32_t camera_io_init(struct camera_io_master *io_master_info)
 
 	return -EINVAL;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(camera_io_init);
+#endif
 
 int32_t camera_io_release(struct camera_io_master *io_master_info)
 {
@@ -336,3 +354,6 @@ int32_t camera_io_release(struct camera_io_master *io_master_info)
 
 	return -EINVAL;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(camera_io_release);
+#endif

@@ -22,6 +22,10 @@ struct completion *cam_ois_get_i3c_completion(uint32_t index)
 {
 	return &g_i3c_ois_data[index].probe_complete;
 }
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_ois_get_i3c_completion);
+#endif
+
 
 static int cam_ois_subdev_close_internal(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
@@ -148,16 +152,30 @@ static long cam_ois_init_subdev_do_ioctl(struct v4l2_subdev *sd,
 }
 #endif
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+struct v4l2_subdev_internal_ops cam_ois_internal_ops = {
+#else
 static const struct v4l2_subdev_internal_ops cam_ois_internal_ops = {
+#endif
 	.close = cam_ois_subdev_close,
 };
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_ois_internal_ops);
+#endif
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+struct v4l2_subdev_core_ops cam_ois_subdev_core_ops = {
+#else
 static struct v4l2_subdev_core_ops cam_ois_subdev_core_ops = {
+#endif
 	.ioctl = cam_ois_subdev_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl32 = cam_ois_init_subdev_do_ioctl,
 #endif
 };
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_ois_subdev_core_ops);
+#endif
 
 static struct v4l2_subdev_ops cam_ois_subdev_ops = {
 	.core = &cam_ois_subdev_core_ops,

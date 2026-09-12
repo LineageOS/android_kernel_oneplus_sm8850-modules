@@ -16093,8 +16093,15 @@ static void cam_ife_mgr_dump_pf_data(
 	pf_args = hw_cmd_args->u.pf_cmd_args->pf_args;
 	ctx_found = &(pf_args->pf_context_info.ctx_found);
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if ((*ctx_found) && (ctx->flags.pf_mid_found)) {
+		CAM_ERR(CAM_ISP, "CTX found failed during IFE PF dump");
+		return;
+	}
+#else
 	if ((*ctx_found) && (ctx->flags.pf_mid_found))
 		goto outportlog;
+#endif
 
 	if (!cam_smmu_is_fault_ids_valid(pf_args->pf_smmu_info))
 		goto pf_dump;
@@ -16154,9 +16161,11 @@ static void cam_ife_mgr_dump_pf_data(
 pf_dump:
 	cam_ife_mgr_pf_dump(ctx);
 
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 outportlog:
 	cam_packet_util_dump_io_bufs(packet, hw_mgr->mgr_common.img_iommu_hdl,
 		hw_mgr->mgr_common.img_iommu_hdl_secure, pf_args, ctx->flags.pf_mid_found);
+#endif
 
 	cam_packet_util_dump_patch_info(packet, hw_mgr->mgr_common.img_iommu_hdl,
 		hw_mgr->mgr_common.img_iommu_hdl_secure, pf_args);

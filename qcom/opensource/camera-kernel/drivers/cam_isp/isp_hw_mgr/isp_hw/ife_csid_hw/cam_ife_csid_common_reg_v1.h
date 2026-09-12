@@ -1401,7 +1401,11 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.debug_err_vec_cfg                       = 0x2D0,
 	.debug_err_vec_ts_mb                     = 0x2E0,
 	.debug_err_vec_ts_lb                     = 0x2E4,
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	.rx_mode_id_cfg1_addr                    = 0x08F0,
+#else
 	.rx_mode_id_cfg1_addr                    = 0x0870,
+#endif
 	.perf_cnt_reg = {
 		{
 			.perf_cnt_cfg0           = 0x02A0,

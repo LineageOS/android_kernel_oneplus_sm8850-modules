@@ -18,6 +18,15 @@
 #include "include/cam_csiphy_2_4_1_hwreg.h"
 #include "include/cam_csiphy_2_4_2_hwreg.h"
 #include "cam_mem_mgr_api.h"
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "include/cam_csiphy_2_4_0_hwreg_infiniti_main.h"
+#include "include/cam_csiphy_2_4_0_hwreg_infiniti_tele.h"
+#include "include/cam_csiphy_2_4_0_hwreg_lafa_main.h"
+#include "include/cam_csiphy_2_4_0_hwreg_lafa_wide.h"
+#include "include/cam_csiphy_2_4_0_hwreg_lafa_front.h"
+#include "include/cam_csiphy_2_4_0_hwreg_lafa_tele.h"
+#include "include/cam_csiphy_2_4_0_hwreg_macan_main.h"
+#endif
 
 /* Clock divide factor for CPHY spec v1.0 */
 #define CSIPHY_DIVISOR_16                    16
@@ -379,6 +388,44 @@ int32_t cam_csiphy_parse_dt_info(struct platform_device *pdev,
 		csiphy_dev->hw_version = CSIPHY_VERSION_V242;
 		csiphy_dev->is_divisor_32_comp = true;
 		csiphy_dev->clk_lane = 0;
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-infinitimain")) {
+		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_infiniti_main;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V240_INFINITI_MAIN;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-infinititele")) {
+		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_infiniti_tele;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V240_INFINITI_TELE;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-lafamain")) {
+		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_lafa_main;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V240_LAFA_MAIN;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-lafawide")) {
+		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_lafa_wide;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V240_LAFA_WIDE;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-lafafront")) {
+		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_lafa_front;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V240_LAFA_FRONT;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-lafatele")) {
+		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_lafa_tele;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V240_LAFA_TELE;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-macanmain")) {
+		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_macan_main;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V240_MACAN_MAIN;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+#endif
 	} else {
 		CAM_ERR(CAM_CSIPHY, "invalid hw version : 0x%x",
 			csiphy_dev->hw_version);

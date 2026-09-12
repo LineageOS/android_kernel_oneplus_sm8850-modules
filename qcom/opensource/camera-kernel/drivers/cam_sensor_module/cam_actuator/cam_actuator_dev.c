@@ -136,21 +136,38 @@ static long cam_actuator_init_subdev_do_ioctl(struct v4l2_subdev *sd,
 }
 #endif
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+struct v4l2_subdev_core_ops cam_actuator_subdev_core_ops = {
+#else
 static struct v4l2_subdev_core_ops cam_actuator_subdev_core_ops = {
+#endif
 	.ioctl = cam_actuator_subdev_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl32 = cam_actuator_init_subdev_do_ioctl,
 #endif
 };
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_actuator_subdev_core_ops);
+#endif
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
 static struct v4l2_subdev_ops cam_actuator_subdev_ops = {
+#else
+static const struct v4l2_subdev_ops cam_actuator_subdev_ops = {
+#endif
 	.core = &cam_actuator_subdev_core_ops,
 };
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+struct v4l2_subdev_internal_ops cam_actuator_internal_ops = {
+#else
 static const struct v4l2_subdev_internal_ops cam_actuator_internal_ops = {
+#endif
 	.close = cam_actuator_subdev_close,
 };
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_actuator_internal_ops);
+#endif
 static int cam_actuator_init_subdev(struct cam_actuator_ctrl_t *a_ctrl)
 {
 	int rc = 0;

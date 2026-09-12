@@ -3914,7 +3914,9 @@ int cam_soc_util_get_dt_properties(struct cam_hw_soc_info *soc_info)
 #endif
 	return rc;
 }
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+EXPORT_SYMBOL(cam_soc_util_get_dt_properties);
+#endif
 /**
  * cam_soc_util_get_regulator()
  *

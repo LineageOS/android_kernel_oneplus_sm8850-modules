@@ -19,10 +19,15 @@
 	(IS_ENABLED(CONFIG_NRT_MAP_WORKER_KTHREAD) ? WORKER_TYPE_KTHREAD :  \
 						WORKER_TYPE_WORKQ)
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#define IS_KTHREAD_IN_USE true
+#else
 #define IS_KTHREAD_IN_USE                                                   \
 	(IS_ENABLED(CONFIG_NRT_MAP_WORKER_KTHREAD) ? true :                 \
 	IS_ENABLED(CONFIG_RT_MAP_WORKER_KTHREAD) ? true :                   \
 						false)
+
+#endif
 
 static int cam_worker_wrapper_create(
 	struct cam_worker_wrapper_create_args *init_args,
@@ -115,6 +120,15 @@ int cam_worker_wrapper_init(
 			worker_class_type, worker_wrapper_init_para->name);
 		return -EINVAL;
 	}
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	/* Retain the vendor's dedicated workers using Qualcomm's worker API. */
+	if (worker_class_type == WORKER_CLASS_NRT &&
+	    (strstr(worker_wrapper_init_para->name, "CRMCORE") ||
+	     strstr(worker_wrapper_init_para->name, "icp_command_queue") ||
+	     strstr(worker_wrapper_init_para->name, "message_queue")))
+		worker_type = WORKER_TYPE_KTHREAD;
+#endif
 
 	worker_ctx_temp = CAM_MEM_ZALLOC(sizeof(struct cam_worker_wrapper_ctx), GFP_KERNEL);
 	if (!worker_ctx_temp) {
