@@ -951,6 +951,9 @@ static int _sde_rm_hw_blk_create_new(struct sde_rm *rm,
 				cat->soccp_ph ? true : false, sde_kms)) {
 			SDE_INFO("failed to init hw-fences, disabling hw-fences\n");
 			cat->hw_fence_rev = 0;
+#ifdef OPLUS_FEATURE_DISPLAY
+			SDE_INFO("cat->hw_fence_rev = %d\n", cat->hw_fence_rev);
+#endif
 		}
 	}
 

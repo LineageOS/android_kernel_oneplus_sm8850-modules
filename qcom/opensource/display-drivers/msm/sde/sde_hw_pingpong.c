@@ -13,6 +13,9 @@
 #include "sde_hw_pingpong.h"
 #include "sde_dbg.h"
 #include "sde_kms.h"
+#if defined(CONFIG_PXLW_IRIS)
+#include "dsi_iris_api.h"
+#endif
 
 #define PP_TEAR_CHECK_EN                0x000
 #define PP_SYNC_CONFIG_VSYNC            0x004
@@ -375,6 +378,11 @@ static int sde_hw_pp_setup_dither(struct sde_hw_pingpong *pp,
 		SDE_REG_WRITE(c, base, 0);
 		return 0;
 	}
+
+#if defined(CONFIG_PXLW_IRIS)
+	if (iris_is_chip_supported())
+		iris_sde_update_dither_depth_map(dither_depth_map, DITHER_DEPTH_MAP_INDEX);
+#endif
 
 	offset += 4;
 	for (i = 0; i < DITHER_MATRIX_SZ - 3; i += 4) {

@@ -1007,4 +1007,9 @@ int dsi_ctrl_set_lp2_load(struct dsi_ctrl *dsi_ctrl, bool enable);
  * @dsi_ctrl:                 DSI controller handle.
  */
 void dsi_ctrl_flush_cmd_dma_queue(struct dsi_ctrl *dsi_ctrl);
+
+#ifdef OPLUS_FEATURE_DISPLAY
+int dsi_ctrl_override_dma_cmd_trig(struct dsi_ctrl *dsi_ctrl, enum dsi_trigger_type type);
+#endif /* OPLUS_FEATURE_DISPLAY */
+
 #endif /* _DSI_CTRL_H_ */

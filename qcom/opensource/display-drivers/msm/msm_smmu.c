@@ -483,6 +483,13 @@ static int msm_smmu_fault_handler(struct iommu_domain *domain,
 	SDE_EVT32(iova, flags);
 	DRM_ERROR("trigger dump, iova=0x%08lx, flags=0x%x\n", iova, flags);
 	DRM_ERROR("SMMU device:%s", client->dev ? client->dev->kobj.name : "");
+#ifdef OPLUS_FEATURE_DISPLAY
+		oplus_sde_evtlog_dump_all();
+		if (get_eng_version() == FACTORY || get_eng_version() == AGING || get_eng_version() == HIGH_TEMP_AGING) {
+			SDE_EVT32(0x11, 0x22, 0x33);
+			SDE_DBG_DUMP(SDE_DBG_BUILT_IN_ALL, "panic");
+		}
+#endif
 
 	/*
 	 * return -ENOSYS to allow smmu driver to dump out useful

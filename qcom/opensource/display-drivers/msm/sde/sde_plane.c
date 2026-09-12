@@ -39,6 +39,13 @@
 #include "sde_vbif.h"
 #include "sde_plane.h"
 #include "sde_color_processing.h"
+#ifdef OPLUS_FEATURE_DISPLAY
+#include "oplus_display_sysfs_attrs.h"
+#include "oplus_debug.h"
+#endif /* OPLUS_FEATURE_DISPLAY */
+#if defined(CONFIG_PXLW_IRIS)
+#include "dsi_iris_api.h"
+#endif
 #include "hfi_kms.h"
 #include "hfi_crtc.h"
 #include "hfi_commands_display.h"
@@ -738,6 +745,10 @@ int sde_plane_wait_input_fence(struct drm_plane *plane, uint32_t wait_ms, int *e
 		input_fence = pstate->input_fence;
 
 		if (input_fence) {
+#ifdef OPLUS_FEATURE_DISPLAY
+			// hack timeout for debug
+			wait_ms = 5000;
+#endif
 			prefix = sde_sync_get_name_prefix(input_fence);
 			rc = sde_sync_wait(input_fence, wait_ms, error_status);
 
@@ -748,6 +759,11 @@ int sde_plane_wait_input_fence(struct drm_plane *plane, uint32_t wait_ms, int *e
 						PLANE_PROP_INPUT_FENCE));
 				sde_kms_timeline_status(plane->dev);
 				ret = -ETIMEDOUT;
+#ifdef OPLUS_FEATURE_DISPLAY
+				oplus_sde_evtlog_dump_all();
+				EXCEPTION_TRACKPOINT_REPORT("DisplayDriverID@@%d$$fence timeout, wait_ms=%d\n",
+								OPLUS_DISP_Q_ERROR_FENCE_TIMEOUT, wait_ms);
+#endif
 				break;
 			case -ERESTARTSYS:
 				SDE_ERROR_PLANE(psde,
@@ -882,7 +898,13 @@ int sde_plane_get_scanout_info(struct sde_plane *psde,
 	 */
 	if (aspace && pstate->defer_prepare_fb) {
 		SDE_EVT32(DRMID(&psde->base), psde->pipe, aspace->domain_attached);
+#ifdef OPLUS_FEATURE_DISPLAY
+	SDE_ATRACE_BEGIN("msm_framebuffer_prepare defer");
+#endif
 		ret = msm_framebuffer_prepare(fb, pstate->aspace);
+#ifdef OPLUS_FEATURE_DISPLAY
+	SDE_ATRACE_END("msm_framebuffer_prepare defer");
+#endif
 		if (ret) {
 			SDE_ERROR_PLANE(psde,
 					"failed to prepare framebuffer %d\n", ret);
@@ -1329,6 +1351,11 @@ void _sde_plane_setup_csc(struct sde_plane *psde, struct sde_plane_state *pstate
 	else
 		pstate->csc_ptr = (struct sde_csc_cfg *)&sde_csc_YUV2RGB_601L;
 	mutex_unlock(&psde->property_info.property_lock);
+
+#if defined(CONFIG_PXLW_IRIS)
+	if (iris_is_chip_supported())
+		iris_sde_plane_setup_csc(pstate->csc_ptr);
+#endif
 
 	SDE_DEBUG_PLANE(psde, "using 0x%X 0x%X 0x%X...\n",
 			pstate->csc_ptr->csc_mv[0],
@@ -2290,8 +2317,14 @@ static int sde_plane_prepare_fb(struct drm_plane *plane,
 	}
 
 	if (pstate->aspace && fb) {
+#ifdef OPLUS_FEATURE_DISPLAY
+	SDE_ATRACE_BEGIN("msm_framebuffer_prepare");
+#endif
 		ret = msm_framebuffer_prepare(fb,
 				pstate->aspace);
+#ifdef OPLUS_FEATURE_DISPLAY
+	SDE_ATRACE_END("msm_framebuffer_prepare");
+#endif
 		if (ret) {
 			SDE_ERROR("failed to prepare framebuffer fb:%d plane:%d pipe:%d ret:%d\n",
 				 fb->base.id, plane->base.id, psde->pipe, ret);
@@ -3936,6 +3969,12 @@ static void _sde_plane_update_format_and_rects(struct sde_plane *psde,
 		psde->pipe_hw->ops.setup_cac_ctrl[disp_op](psde->pipe_hw,
 								   cac_mode, fov_en, pp_idx);
 	}
+
+#if defined(PXLW_IRIS_DUAL)
+	if (psde->pipe_hw->ops.setup_csc_v2)
+		psde->pipe_hw->ops.setup_csc_v2(psde->pipe_hw,
+			fmt, pstate->csc_usr_ptr);
+#endif
 }
 
 static void _sde_plane_update_sharpening(struct sde_plane *psde)
@@ -3962,6 +4001,9 @@ static void _sde_plane_update_properties(struct drm_plane *plane,
 	struct drm_plane_state *state;
 	struct sde_plane_state *pstate;
 	struct sde_kms *sde_kms = NULL;
+#ifdef OPLUS_FEATURE_DISPLAY
+	char tag_name[128];
+#endif
 	enum msm_disp_op disp_op = sde_plane_get_disp_op(plane);
 	int ret;
 	u32 disp_id = 0;
@@ -3994,6 +4036,11 @@ static void _sde_plane_update_properties(struct drm_plane *plane,
 		return;
 	}
 
+#ifdef OPLUS_FEATURE_DISPLAY
+	snprintf(tag_name, sizeof(tag_name), "_sde_plane_update_properties pstate->dirty:0x%x", pstate->dirty);
+	OPLUS_DSI_TRACE_BEGIN(tag_name);
+#endif
+
 	fmt = to_sde_format(msm_fmt);
 	nplanes = fmt->num_planes;
 
@@ -4010,7 +4057,14 @@ static void _sde_plane_update_properties(struct drm_plane *plane,
 			psde->pipe_hw->ops.setup_format[disp_op])
 		_sde_plane_update_format_and_rects(psde, pstate, fmt);
 
+#if defined(CONFIG_PXLW_IRIS)
+	if (iris_is_chip_supported() && (iris_get_pq_disable_val() & 0x04) > 0)
+		iris_sde_color_process_plane_disable(plane, _sde_plane_get_hw_ctl(plane, NULL));
+	else
+		sde_color_process_plane_setup(plane);
+#else
 	sde_color_process_plane_setup(plane);
+#endif
 
 	/* update sharpening */
 	if ((pstate->dirty & SDE_PLANE_DIRTY_SHARPEN) &&
@@ -4080,6 +4134,9 @@ static void _sde_plane_update_properties(struct drm_plane *plane,
 			hfi_util_u32_prop_helper_reset(psde->hfi_plane->color_props);
 	}
 end:
+#ifdef OPLUS_FEATURE_DISPLAY
+	OPLUS_DSI_TRACE_END(tag_name);
+#endif
 	return;
 }
 
@@ -4307,7 +4364,13 @@ static void sde_plane_atomic_update(struct drm_plane *plane,
 	if (!sde_plane_enabled(state)) {
 		_sde_plane_atomic_disable(plane, old_state);
 	} else {
+#ifdef OPLUS_FEATURE_DISPLAY
+	SDE_ATRACE_BEGIN("sde_plane_sspp_atomic_update");
+#endif
 		ret = sde_plane_sspp_atomic_update(plane, old_state);
+#ifdef OPLUS_FEATURE_DISPLAY
+	SDE_ATRACE_END("sde_plane_sspp_atomic_update");
+#endif
 		/* atomic_check should have ensured that this doesn't fail */
 		WARN_ON(ret < 0);
 	}

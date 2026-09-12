@@ -11,6 +11,9 @@
 #include "dp_catalog.h"
 #include "dp_aux_bridge.h"
 
+#ifdef OPLUS_FEATURE_DISPLAY
+extern bool dp_ctrl_enable;
+#endif /* OPLUS_FEATURE_DISPLAY */
 struct device;
 
 /**

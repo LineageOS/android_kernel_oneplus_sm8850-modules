@@ -10,6 +10,9 @@
 #include "dsi_defs.h"
 #include "dsi_phy_hw.h"
 #include "dsi_catalog.h"
+#ifdef OPLUS_FEATURE_DISPLAY
+#include "oplus_display_interface.h"
+#endif /* OPLUS_FEATURE_DISPLAY */
 
 #define DSIPHY_CMN_REVISION_ID0                                   0x000
 #define DSIPHY_CMN_REVISION_ID1                                   0x004
@@ -365,16 +368,28 @@ static void dsi_phy_hw_dphy_enable(struct dsi_phy_hw *phy, struct dsi_phy_cfg *c
 	bool split_link_enabled;
 	u32 lanes_per_sublink;
 	u32 cmn_lane_ctrl0 = 0;
-
+#ifdef OPLUS_FEATURE_DISPLAY
+	struct dsi_display *display = get_main_display();
+	if (display == NULL || display->panel == NULL) {
+		DSI_PHY_ERR(phy, "display is null\n");
+		return;
+	}
+#endif
 	/* Alter PHY configurations if data rate less than 1.5GHZ*/
 	if (cfg->bit_clk_rate_hz <= 1500000000)
 		less_than_1500_mhz = true;
 
 	glbl_rescode_top_ctrl = less_than_1500_mhz ? 0x3c : 0x03;
 	glbl_rescode_bot_ctrl = less_than_1500_mhz ? 0x38 : 0x3c;
+#ifdef OPLUS_FEATURE_DISPLAY
+	if (oplus_display_ops.dsi_phy_hw_dphy_enable) {
+		oplus_display_ops.dsi_phy_hw_dphy_enable(&glbl_str_swi_cal_sel_ctrl,
+				&glbl_hstx_str_ctrl_0);
+	}
+#else
 	glbl_str_swi_cal_sel_ctrl = 0x00;
 	glbl_hstx_str_ctrl_0 = 0x88;
-
+#endif /* OPLUS_FEATURE_DISPLAY */
 
 	split_link_enabled = cfg->split_link.enabled;
 	lanes_per_sublink = cfg->split_link.lanes_per_sublink;
@@ -400,7 +415,16 @@ static void dsi_phy_hw_dphy_enable(struct dsi_phy_hw *phy, struct dsi_phy_cfg *c
 	dsi_phy_hw_v7_2_lane_swap_config(phy, &cfg->lane_map);
 
 	/* Enable LDO */
+#ifdef OPLUS_FEATURE_DISPLAY
+	if (!strcmp(display->panel->name, "AE084 P 3 A0033 dsc cmd mode panel")) {
+		DSI_W32(phy, DSIPHY_CMN_VREG_CTRL_0, 0x47);
+		DSI_PHY_DBG(phy, "[Custom] modify DSIPHY_CMN_VREG_CTRL_0 is 0x47 \n");
+	} else {
+		DSI_W32(phy, DSIPHY_CMN_VREG_CTRL_0, 0x56);
+	}
+#else
 	DSI_W32(phy, DSIPHY_CMN_VREG_CTRL_0, 0x56);
+#endif /* OPLUS_FEATURE_DISPLAY */
 	DSI_W32(phy, DSIPHY_CMN_VREG_CTRL_1, 0x19);
 	DSI_W32(phy, DSIPHY_CMN_CTRL_3, 0x00);
 	DSI_W32(phy, DSIPHY_CMN_GLBL_STR_SWI_CAL_SEL_CTRL,
@@ -434,7 +458,17 @@ static void dsi_phy_hw_dphy_enable(struct dsi_phy_hw *phy, struct dsi_phy_cfg *c
 	}
 
 	/* Select full-rate mode */
+#ifdef OPLUS_FEATURE_DISPLAY
+	if (!strcmp(display->panel->name, "AE084 P 3 A0033 dsc cmd mode panel")) {
+		DSI_W32(phy, DSIPHY_CMN_CTRL_2, 0x41);
+		DSI_PHY_DBG(phy, "[Custom] modify DSIPHY_CMN_CTRL_2 is 0x41 \n");
+	} else {
+		DSI_W32(phy, DSIPHY_CMN_CTRL_2, 0x40);
+	}
+#else
 	DSI_W32(phy, DSIPHY_CMN_CTRL_2, 0x40);
+#endif /* OPLUS_FEATURE_DISPLAY */
+
 
 	if (cfg->pll_source == DSI_PLL_SOURCE_NATIVE)
 		DSI_W32(phy, DSIPHY_CMN_CTRL_5, 0x07);

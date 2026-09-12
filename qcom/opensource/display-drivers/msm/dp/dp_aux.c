@@ -17,6 +17,12 @@
 #include "dp_hpd.h"
 #include "dp_debug.h"
 
+#ifdef OPLUS_FEATURE_DISPLAY
+#include <soc/oplus/system/oplus_project.h>
+extern unsigned int is_project(int project);
+bool dp_ctrl_enable;
+#endif /* OPLUS_FEATURE_DISPLAY */
+
 #define DP_AUX_ENUM_STR(x)		#x
 #define DP_AUX_IPC_NUM_PAGES 10
 
@@ -213,7 +219,7 @@ static int dp_aux_cmd_fifo_tx(struct dp_aux_private *aux,
 		struct drm_dp_aux_msg *msg)
 {
 	u32 ret = 0, len = 0, timeout;
-	int const aux_timeout_ms = HZ/4;
+	int const aux_timeout_ms = HZ/2;
 	struct dp_aux *dp_aux = &aux->dp_aux;
 	char prefix[64];
 
@@ -919,6 +925,18 @@ struct dp_aux *dp_aux_get(struct device *dev, struct dp_catalog_aux *catalog,
 	dp_aux->abort = dp_aux_abort_transaction;
 	dp_aux->set_sim_mode = dp_aux_set_sim_mode;
 	dp_aux->ipc_log_context = ipc_log_context;
+
+#ifdef OPLUS_FEATURE_DISPLAY
+	dp_ctrl_enable = of_property_read_bool(dev->of_node,
+			"oplus,dp-ctrl-enable");
+	DP_AUX_WARN(dp_aux, "oplus,dp-ctrl-enable, dp_ctrl_enable:%d\n",
+			dp_ctrl_enable);
+
+	if (dp_ctrl_enable) {
+		DP_AUX_WARN(dp_aux, "this oplus project is not need dp_aux\n");
+		return dp_aux;
+	}
+#endif /* OPLUS_FEATURE_DISPLAY */
 
 	/*Condition to avoid allocating function pointers for aux bypass mode*/
 	if (switch_type != DP_AUX_SWITCH_BYPASS) {

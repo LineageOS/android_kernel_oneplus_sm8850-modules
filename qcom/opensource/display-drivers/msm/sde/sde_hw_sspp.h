@@ -474,6 +474,18 @@ struct sde_hw_sspp_ops {
 	void (*setup_csc[MSM_DISP_OP_MAX])(struct sde_hw_pipe *ctx, struct sde_csc_cfg *data,
 			enum msm_disp_op disp_op);
 
+#if defined(PXLW_IRIS_DUAL)
+	/**
+	 * setup_csc_v2 - setup color space conversion version 2
+	 * @ctx: Pointer to pipe context
+	 * @fmt: Pointer to sde_format structure
+	 * @data: Pointer to config structure
+	 */
+	void (*setup_csc_v2)(struct sde_hw_pipe *ctx,
+					const struct sde_format *fmt,
+					struct sde_csc_cfg *data);
+#endif
+
 	/**
 	 * setup_solidfill - enable/disable colorfill
 	 * @ctx: Pointer to pipe context

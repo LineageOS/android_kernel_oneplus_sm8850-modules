@@ -26,6 +26,9 @@
 #include "msm_drv.h"
 #include "msm_kms.h"
 #include "msm_gem.h"
+#ifdef OPLUS_FEATURE_DISPLAY
+#include "sde_trace.h"
+#endif
 
 struct msm_framebuffer {
 	struct drm_framebuffer base;
@@ -62,7 +65,13 @@ int msm_framebuffer_prepare(struct drm_framebuffer *fb,
 	msm_fb = to_msm_framebuffer(fb);
 	n = fb->format->num_planes;
 	for (i = 0; i < n; i++) {
+#ifdef OPLUS_FEATURE_DISPLAY
+	SDE_ATRACE_BEGIN("msm_gem_get_iova");
+#endif
 		ret = msm_gem_get_iova(fb->obj[i], aspace, &iova);
+#ifdef OPLUS_FEATURE_DISPLAY
+	SDE_ATRACE_END("msm_gem_get_iova");
+#endif
 		DBG("FB[%u]: iova[%d]: %08llx (%d)", fb->base.id, i, iova, ret);
 		if (ret)
 			return ret;

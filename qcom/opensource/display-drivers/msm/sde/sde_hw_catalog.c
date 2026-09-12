@@ -4652,6 +4652,9 @@ static void _sde_top_parse_dt_helper(struct sde_mdss_cfg *cfg,
 		SDE_INFO("disabling hw-fence because invalid protocol_id:%d client_phys_id:%d\n",
 			cfg->ipcc_protocol_id, cfg->ipcc_client_phys_id);
 		cfg->hw_fence_rev = 0;
+#ifdef OPLUS_FEATURE_DISPLAY
+		SDE_INFO("cfg->hw_fence_rev = %d\n", cfg->hw_fence_rev);
+#endif
 	}
 	cfg->ipcc_client_out_phys_id = PROP_VALUE_ACCESS(props->values, IPCC_CLIENT_OUT_PHYS_ID, 0);
 
@@ -6953,9 +6956,23 @@ static int sde_hw_ver_parse_dt(struct drm_device *dev, struct device_node *np,
 		cfg->hw_rev = sde_kms_get_hw_version(dev);
 
 	if (prop_exists[SDE_HW_FENCE_VERSION])
+#ifndef OPLUS_FEATURE_DISPLAY
 		cfg->hw_fence_rev = PROP_VALUE_ACCESS(prop_value, SDE_HW_FENCE_VERSION, 0);
+#else
+	{
+		cfg->hw_fence_rev = PROP_VALUE_ACCESS(prop_value, SDE_HW_FENCE_VERSION, 0);
+		SDE_ERROR("cfg->hw_fence_rev = %d\n", cfg->hw_fence_rev);
+	}
+#endif
 	else
+#ifndef OPLUS_FEATURE_DISPLAY
 		cfg->hw_fence_rev = 0; /* disable hw-fences */
+#else
+	{
+		cfg->hw_fence_rev = 0; /* disable hw-fences */
+		SDE_ERROR("cfg->hw_fence_rev = %d\n", cfg->hw_fence_rev);
+	}
+#endif
 
 	if (prop_exists[SDE_HW_UBWC_VERSION])
 		cfg->ubwc_rev = PROP_VALUE_ACCESS(prop_value, SDE_HW_UBWC_VERSION, 0);

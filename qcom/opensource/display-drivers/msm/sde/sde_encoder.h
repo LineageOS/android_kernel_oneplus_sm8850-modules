@@ -55,7 +55,11 @@ struct sde_crtc_state;
 #define SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE	BIT(4)
 #define SDE_ENCODER_FRAME_EVENT_CWB_DONE		BIT(5)
 
-#define IDLE_POWERCOLLAPSE_DURATION	(66 - 16/2)
+#ifdef OPLUS_FEATURE_DISPLAY
+#define IDLE_POWERCOLLAPSE_DURATION (80 - 16/2)
+#else /* OPLUS_FEATURE_DISPLAY */
+#define IDLE_POWERCOLLAPSE_DURATION (66 - 16/2)
+#endif /* OPLUS_FEATURE_DISPLAY */
 #define IDLE_POWERCOLLAPSE_IN_EARLY_WAKEUP (200 - 16/2)
 
 /* below this fps limit, timeouts are adjusted based on fps */
@@ -622,6 +626,9 @@ struct sde_encoder_virt {
 	struct kthread_work early_wakeup_work;
 	struct kthread_work input_event_work;
 	struct kthread_work esd_trigger_work;
+#if defined(CONFIG_PXLW_IRIS)
+	struct kthread_work disable_autorefresh_work;
+#endif
 	struct kthread_work self_refresh_work;
 	struct kthread_work backlight_cmd_work;
 	struct kthread_delayed_work backlight_sr_work;
@@ -1432,6 +1439,68 @@ static inline int sde_encoder_register_misr_event(struct drm_encoder *drm_enc, b
  * @Return: true if copr notify is allowed
  */
 bool sde_encoder_copr_allow_notify(struct drm_encoder *drm_enc);
+
+#if defined(CONFIG_PXLW_IRIS) || defined(CONFIG_PXLW_SOFT_IRIS)
+/**
+ * sde_encoder_rc_lock - lock the sde encoder resource control.
+ * @drm_enc:    Pointer to drm encoder structure
+ * @Return:     void.
+ */
+void sde_encoder_rc_lock(struct drm_encoder *drm_enc);
+
+/**
+ * sde_encoder_rc_unlock - unlock the sde encoder resource control.
+ * @drm_enc:    Pointer to drm encoder structure
+ * @Return:     void.
+ */
+void sde_encoder_rc_unlock(struct drm_encoder *drm_enc);
+
+/**
+ * sde_encoder_disable_autorefresh - disable autorefresh
+ * @drm_enc:    Pointer to drm encoder structure
+ * @Return:     void.
+ */
+void sde_encoder_disable_autorefresh_handler(struct drm_encoder *drm_enc);
+
+/**
+ * sde_encoder_is_disabled - encoder is disabled
+ * @drm_enc:    Pointer to drm encoder structure
+ * @Return:     bool.
+ */
+//bool sde_encoder_is_disabled(struct drm_encoder *drm_enc);
+
+/**
+ * sde_encoder_wait_vblack - wait vblack
+ * @connector:    Pointer to drm connector structure
+ * @drm_enc:    Pointer to drm encoder structure
+ * @wait_num:    wait vysnc times
+ * @Return:     void.
+ */
+void sde_encoder_wait_vblack(struct drm_connector *connector, struct drm_encoder *drm_enc, int wait_num);
+
+/**
+ * sde_encoder_pre_kickoff_update_panel_level - update panel backlight before kickoff
+ * @drm_enc:    Pointer to drm encoder structure
+ * @drm_enc:    Pointer to drm connector structure
+ * @Return:     void.
+ */
+void sde_encoder_pre_kickoff_update_panel_level(struct drm_connector *connector,  struct drm_encoder *drm_enc);
+
+/**
+ * sde_encoder_post_kickoff_update_panel_level - update panel backlight after kickoff
+ * @drm_enc:    Pointer to drm connector structure
+ * @Return:     void.
+ */
+void sde_encoder_post_kickoff_update_panel_level(struct drm_connector *connector);
+
+/**
+ * sde_encoder_update_panel_level - update panel level
+ * @drm_enc:    Pointer to drm encoder structure
+ * @connector:    Pointer to drm connector structure
+ */
+void sde_encoder_update_panel_level(struct drm_connector *connector,  struct drm_encoder *drm_enc);
+#endif
+
 
 /**
  * sde_encoder_get_disp_op - Returns the display control index - default: MSM_DISP_OP_HWIO

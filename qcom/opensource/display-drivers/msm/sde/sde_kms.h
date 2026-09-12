@@ -43,6 +43,12 @@
 #include "sde_power_handle.h"
 #include "sde_irq.h"
 #include "sde_core_perf.h"
+#ifdef OPLUS_FEATURE_DISPLAY
+#include <soc/oplus/system/oplus_project.h>
+#ifdef OPLUS_TRACKPOINT_REPORT
+#include "oplus_trackpoint_report.h"
+#endif /* OPLUS_TRACKPOINT_REPORT */
+#endif /* OPLUS_FEATURE_DISPLAY */
 
 #define DRMID(x) ((x) ? (x)->base.id : -1)
 
@@ -686,6 +692,9 @@ void *sde_debugfs_get_root(struct sde_kms *sde_kms);
  * These functions/definitions allow for building up a 'sde_info' structure
  * containing one or more "key=value\n" entries.
  */
+#ifdef OPLUS_FEATURE_DISPLAY
+#define SDE_KMS_INFO_MAX_SIZE	8192
+#else /* OPLUS_FEATURE_DISPLAY */
 #if IS_ENABLED(CONFIG_DRM_LOW_MSM_MEM_FOOTPRINT)
 #define SDE_KMS_INFO_MAX_SIZE (1 << 12)
 #elif IS_ENABLED(CONFIG_DSI_EXTENDED_MODES)
@@ -693,6 +702,7 @@ void *sde_debugfs_get_root(struct sde_kms *sde_kms);
 #else
 #define SDE_KMS_INFO_MAX_SIZE (1 << 14)
 #endif
+#endif /* OPLUS_FEATURE_DISPLAY */
 
 /**
  * struct sde_kms_info - connector information structure container

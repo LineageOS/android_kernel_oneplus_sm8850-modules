@@ -13,6 +13,16 @@ def define_canoe():
                     "msm_drm",
                 ],
                 config_options = [
+#ifdef OPLUS_FEATURE_DISPLAY
+                    "OPLUS_FEATURE_DISPLAY",
+                    "OPLUS_FEATURE_DISPLAY_ADFR",
+                    "OPLUS_FEATURE_DISPLAY_HIGH_PRECISION",
+                    "OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION",
+                    "OPLUS_FEATURE_DISPLAY_ONSCREENFINGERPRINT",
+                    "OPLUS_TRACKPOINT_REPORT",
+                    "OPLUS_FEATURE_APDMR",
+                    "OPLUS_FEATURE_AP_UIR_DIMMING",
+#endif /* OPLUS_FEATURE_DISPLAY */
                     "CONFIG_DRM_MSM_SDE",
                     "CONFIG_SYNC_FILE",
                     "CONFIG_DRM_MSM_DSI",
@@ -37,6 +47,10 @@ def define_canoe():
                     "CONFIG_SMMU_PROXY",
                     "CONFIG_DSI_EXTENDED_MODES",
                     "CONFIG_MSM_SDE_ROTATOR",
-                    "CONFIG_MSM_SDE_ROTATOR_EVTLOG_DEBUG"
+                    "CONFIG_MSM_SDE_ROTATOR_EVTLOG_DEBUG",
+#ifdef CONFIG_PXLW_IRIS
+                    "CONFIG_PXLW_IRIS",
+                    "CONFIG_PXLW_IRIS7P",
+#endif /* CONFIG_PXLW_IRIS */
                 ],
             )

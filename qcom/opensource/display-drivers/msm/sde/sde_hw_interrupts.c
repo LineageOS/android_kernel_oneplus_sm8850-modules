@@ -11,6 +11,7 @@
 #include "sde_hw_interrupts.h"
 #include "sde_hw_util.h"
 #include "sde_hw_mdss.h"
+#include "sde_dbg.h"
 
 /**
  * Register offsets in MDSS register file for the interrupt registers
@@ -443,6 +444,34 @@ static int sde_hw_intr_irqidx_lookup(struct sde_hw_intr *intr,
 			intr_type, instance_idx);
 	return -EINVAL;
 }
+#define SDE_REG_INTR2_STATUS_ADDR     0x980100C
+#define SDE_REG_INTR_STATUS_ADDR      0x9801014
+#define SDE_REG_HIST_STATUS_ADDR      0x9801020
+#define SDE_REG_HIST_CLEAR_ADDR       0x9801024
+#define SDE_REG_LTM0_STATUS_ADDR      0x9909354
+#define SDE_REG_LTM0_CLEAR_ADDR       0x9909358
+#define SDE_REG_LTM1_STATUS_ADDR      0x9911354
+#define SDE_REG_LTM1_CLEAR_ADDR       0x9911358
+#define SDE_REG_LTM2_STATUS_ADDR      0x9919354
+#define SDE_REG_LTM2_CLEAR_ADDR       0x9919358
+#define SDE_REG_LTM3_STATUS_ADDR      0x9921354
+#define SDE_REG_LTM3_CLEAR_ADDR       0x9921358
+
+#define SDE_INTR_STORM_TIME_THRESHOLD_NS 25000
+#define SDE_INTR_STORM_COUNT_THRESHOLD 40
+
+void __iomem *g_regmap1 = NULL;
+void __iomem *g_regmap2 = NULL;
+void __iomem *g_regmap3 = NULL;
+void __iomem *g_regmap4 = NULL;
+void __iomem *g_regmap5 = NULL;
+void __iomem *g_regmap6 = NULL;
+void __iomem *g_regmap7 = NULL;
+void __iomem *g_regmap8 = NULL;
+void __iomem *g_regmap9 = NULL;
+void __iomem *g_regmap10 = NULL;
+void __iomem *g_regmap11 = NULL;
+void __iomem *g_regmap12 = NULL;
 
 static void sde_hw_intr_dispatch_irq(struct sde_hw_intr *intr,
 		void (*cbfunc)(void *, int),
@@ -455,6 +484,10 @@ static void sde_hw_intr_dispatch_irq(struct sde_hw_intr *intr,
 	u32 irq_status;
 	u32 enable_mask;
 	unsigned long irq_flags;
+	u32 diff_time = 0;
+	u32 hist_status = 0, ltm0_status = 0, ltm1_status = 0, ltm2_status = 0, ltm3_status = 0, clear_status = 0;
+	static ktime_t curr_time, prev_time;
+	static u32 counter, sde_dump_dbg;
 
 	if (!intr)
 		return;
@@ -465,6 +498,9 @@ static void sde_hw_intr_dispatch_irq(struct sde_hw_intr *intr,
 	 * irq lookup index.
 	 */
 	spin_lock_irqsave(&intr->irq_lock, irq_flags);
+	if (g_regmap1 && g_regmap2)
+		SDE_EVT32(0x1111, readl_relaxed(g_regmap1), readl_relaxed(g_regmap2));
+
 	for (reg_idx = 0; reg_idx < intr->sde_irq_size; reg_idx++) {
 		/*
 		 * Each Interrupt register has dynamic range of indexes,
@@ -535,6 +571,67 @@ static void sde_hw_intr_dispatch_irq(struct sde_hw_intr *intr,
 	wmb();
 
 	spin_unlock_irqrestore(&intr->irq_lock, irq_flags);
+
+	curr_time = ktime_get();
+	diff_time = ktime_to_ns(curr_time) - ktime_to_ns(prev_time);
+	if (diff_time && diff_time < SDE_INTR_STORM_TIME_THRESHOLD_NS) {
+		counter++;
+		if (g_regmap3 && g_regmap4) {
+			hist_status = readl_relaxed(g_regmap3);
+			if (hist_status & 0x200000 || hist_status & 0x400000 ||
+				hist_status & 0x100000 || hist_status & 0x800000 ||
+				hist_status & 0x20000 || hist_status & 0x2000 ||
+				hist_status & 0x1000 || hist_status & 0x10000) {
+				clear_status = readl_relaxed(g_regmap4);
+				clear_status |= 0xf33000;
+				writel_relaxed(clear_status, g_regmap4);
+			}
+		}
+		if (g_regmap5 && g_regmap6) {
+			ltm0_status = readl_relaxed(g_regmap5);
+			if (ltm0_status & 0x40) {
+				clear_status = readl_relaxed(g_regmap6);
+				clear_status |= 0x40;
+				writel_relaxed(clear_status, g_regmap6);
+			}
+		}
+		if (g_regmap7 && g_regmap8) {
+			ltm1_status = readl_relaxed(g_regmap7);
+			if (ltm1_status & 0x40) {
+				clear_status = readl_relaxed(g_regmap8);
+				clear_status |= 0x40;
+				writel_relaxed(clear_status, g_regmap8);
+			}
+		}
+		if (g_regmap9 && g_regmap10) {
+			ltm2_status = readl_relaxed(g_regmap9);
+			if (ltm2_status & 0x40) {
+				clear_status = readl_relaxed(g_regmap10);
+				clear_status |= 0x40;
+				writel_relaxed(clear_status, g_regmap10);
+			}
+		}
+		if (g_regmap11 && g_regmap12) {
+			ltm3_status = readl_relaxed(g_regmap11);
+			if (ltm3_status & 0x40) {
+				clear_status = readl_relaxed(g_regmap12);
+				clear_status |= 0x40;
+				writel_relaxed(clear_status, g_regmap12);
+			}
+		}
+		SDE_EVT32(0x6666, counter, diff_time, hist_status, ltm0_status, ltm1_status, ltm2_status, ltm3_status);
+		if (counter == SDE_INTR_STORM_COUNT_THRESHOLD && !sde_dump_dbg) {
+			pr_err("QIPL: %s Log Register dumps and xlog\n", __func__);
+			SDE_EVT32(0x9999, 0xebad);
+			sde_dump_dbg = 1;
+			if (get_eng_version() == FACTORY || get_eng_version() == AGING || get_eng_version() == HIGH_TEMP_AGING) {
+				SDE_DBG_DUMP_WQ(SDE_DBG_BUILT_IN_ALL, "panic");
+			}
+		}
+	} else {
+		counter = 0;
+	}
+	prev_time = curr_time;
 }
 
 static int sde_hw_intr_enable_irq_nolock(struct sde_hw_intr *intr, int irq_idx)
@@ -1176,6 +1273,18 @@ struct sde_hw_intr *sde_hw_intr_init(void __iomem *addr,
 	}
 
 	spin_lock_init(&intr->irq_lock);
+	g_regmap1 = ioremap(SDE_REG_INTR2_STATUS_ADDR, 0X4);
+	g_regmap2 = ioremap(SDE_REG_INTR_STATUS_ADDR, 0X4);
+	g_regmap3 = ioremap(SDE_REG_HIST_STATUS_ADDR, 0x4);
+	g_regmap4 = ioremap(SDE_REG_HIST_CLEAR_ADDR, 0x4);
+	g_regmap5 = ioremap(SDE_REG_LTM0_STATUS_ADDR, 0x4);
+	g_regmap6 = ioremap(SDE_REG_LTM0_CLEAR_ADDR, 0x4);
+	g_regmap7 = ioremap(SDE_REG_LTM1_STATUS_ADDR, 0x4);
+	g_regmap8 = ioremap(SDE_REG_LTM1_CLEAR_ADDR, 0x4);
+	g_regmap9 = ioremap(SDE_REG_LTM2_STATUS_ADDR, 0x4);
+	g_regmap10 = ioremap(SDE_REG_LTM2_CLEAR_ADDR, 0x4);
+	g_regmap11 = ioremap(SDE_REG_LTM3_STATUS_ADDR, 0x4);
+	g_regmap12 = ioremap(SDE_REG_LTM3_CLEAR_ADDR, 0x4);
 
 exit:
 	if (ret) {

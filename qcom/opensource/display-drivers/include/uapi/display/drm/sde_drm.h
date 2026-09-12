@@ -354,7 +354,9 @@ struct sde_drm_cac {
 #define SDE_DRM_QSEED4
 #define SDE_DRM_INLINE_PREDOWNSCALE
 #define SDE_DRM_QSEED6
+#ifndef OPLUS_FEATURE_GAME_DSR
 #define SDE_DRM_QSEED7
+#endif
 
 /**
  * struct sde_drm_scaler_v2 - version 2 of struct sde_drm_scaler
@@ -1105,6 +1107,9 @@ struct sde_drm_privacy_layer_v1 {
 #define DRM_EVENT_COPR 0X80000013
 #define DRM_EVENT_VM_RECLAIM 0X80000014
 #define DRM_EVENT_SSR 0X80000015
+#ifdef OPLUS_FEATURE_DISPLAY
+#define DRM_EVENT_TP_TOUCHDOWN 0x80000016 /* tp touch down event */
+#endif /* OPLUS_FEATURE_DISPLAY */
 
 #ifndef DRM_MODE_FLAG_VID_MODE_PANEL
 #define DRM_MODE_FLAG_VID_MODE_PANEL        0x01

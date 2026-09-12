@@ -19,6 +19,10 @@
 #include "sde_hw_dnsc_blur.h"
 #include "sde_trace.h"
 
+#ifdef OPLUS_FEATURE_DISPLAY
+#include "oplus_display_effect.h"
+#endif
+
 #define to_sde_encoder_phys_wb(x) \
 	container_of(x, struct sde_encoder_phys_wb, base)
 
@@ -2121,6 +2125,11 @@ static void _sde_encoder_phys_wb_frame_done_helper(void *arg, bool frame_error)
 
 	if (wb_enc->hw_wb->ops.get_frame_count[disp_op])
 		frame_count = wb_enc->hw_wb->ops.get_frame_count[disp_op](wb_enc->hw_wb);
+
+#ifdef OPLUS_FEATURE_DISPLAY
+	__oplus_read_apl_thread_ctl(true);
+#endif
+
 end:
 	if (frame_error && wb_enc->hw_wb->ops.get_ubwc_error[disp_op]
 			&& wb_enc->hw_wb->ops.clear_ubwc_error[disp_op]) {
@@ -2434,6 +2443,13 @@ static int _sde_encoder_phys_wb_wait_for_idle(struct sde_encoder_phys *phys_enc,
 			phys_enc->in_clone_mode);
 		SDE_EVT32(DRMID(phys_enc->parent), WBID(wb_enc),
 			atomic_read(&phys_enc->pending_kickoff_cnt), SDE_EVTLOG_ERROR);
+#ifdef OPLUS_FEATURE_DISPLAY
+		oplus_sde_evtlog_dump_all();
+		if (get_eng_version() == FACTORY || get_eng_version() == AGING || get_eng_version() == HIGH_TEMP_AGING) {
+			SDE_EVT32(0x11, 0x22, 0x33);
+			SDE_DBG_DUMP(SDE_DBG_BUILT_IN_ALL, "panic");
+		}
+#endif
 		goto frame_done;
 	}
 
@@ -2464,7 +2480,15 @@ static int _sde_encoder_phys_wb_wait_for_ctl_start(struct sde_encoder_phys *phys
 	wait_info.timeout_ms = max_t(u32, wb_enc->wbdone_timeout, phys_enc->kickoff_timeout_ms);
 
 	rc = sde_encoder_helper_wait_for_irq(phys_enc, INTR_IDX_CTL_START, &wait_info);
-
+#ifdef OPLUS_FEATURE_DISPLAY
+	if (rc == -ETIMEDOUT) {
+		oplus_sde_evtlog_dump_all();
+		if (get_eng_version() == FACTORY || get_eng_version() == AGING || get_eng_version() == HIGH_TEMP_AGING) {
+			SDE_EVT32(DRMID(phys_enc->parent), WBID(wb_enc), SDE_EVTLOG_PANIC);
+			SDE_DBG_DUMP(SDE_DBG_BUILT_IN_ALL, "panic");
+		}
+	}
+#endif
 	/*
 	 * if hwfencing enabled, try again to wait for up to the extended timeout time in
 	 * increments as long as fence has not been signaled.

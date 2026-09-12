@@ -29,6 +29,17 @@
 #include <linux/dma-fence-chain.h>
 #endif
 
+#ifdef OPLUS_FEATURE_DISPLAY
+#include <linux/ktime.h>
+#include "sde_dbg.h"
+
+/* OPLUS: commit time threshold - trigger evtlog dump when exceeded */
+#define OPLUS_COMMIT_TIME_THRESHOLD_US    40000  /* 40ms */
+#define IGNORE_FRAME_COUNT_AFTER_POWER_ON  5     /* 5 frames */
+#define PRINT_XLOG_LINE                    400    /* 400 lines */
+int g_frame_count = 0;
+#endif /* OPLUS_FEATURE_DISPLAY */
+
 #define MULTIPLE_CONN_DETECTED(x) (x > 1)
 
 struct msm_commit {
@@ -651,6 +662,11 @@ static void complete_commit(struct msm_commit *c)
 	struct drm_device *dev = state->dev;
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+#ifdef OPLUS_FEATURE_DISPLAY
+	ktime_t oplus_start_time = ktime_get();
+	u64 oplus_elapsed_us;
+	static u64 elapsed_count = 0;
+#endif /* OPLUS_FEATURE_DISPLAY */
 
 	drm_atomic_helper_wait_for_fences(dev, state, false);
 
@@ -658,8 +674,14 @@ static void complete_commit(struct msm_commit *c)
 
 	msm_atomic_helper_commit_modeset_disables(dev, state);
 
+#ifdef OPLUS_FEATURE_DISPLAY
+	SDE_ATRACE_BEGIN("drm_atomic_helper_commit_planes");
+#endif
 	drm_atomic_helper_commit_planes(dev, state,
 				DRM_PLANE_COMMIT_ACTIVE_ONLY);
+#ifdef OPLUS_FEATURE_DISPLAY
+	SDE_ATRACE_END("drm_atomic_helper_commit_planes");
+#endif
 
 	msm_atomic_helper_commit_modeset_enables(dev, state);
 
@@ -681,6 +703,44 @@ static void complete_commit(struct msm_commit *c)
 	drm_atomic_helper_cleanup_planes(dev, state);
 
 	kms->funcs->complete_commit(kms, state);
+
+#ifdef OPLUS_FEATURE_DISPLAY
+	extern int oplus_sync_power_state;
+	static int oplus_prev_sync_power_state = -1;
+
+	/* Check if power mode changed using oplus_sync_power_state
+	 * Note: Check after kms->funcs->complete_commit to ensure
+	 * oplus_sync_power_state has been updated
+	 */
+	if (oplus_prev_sync_power_state != -1 &&
+			oplus_prev_sync_power_state != oplus_sync_power_state) {
+		DRM_DEBUG("Power mode changed: old=%d, new=%d\n",
+				oplus_prev_sync_power_state, oplus_sync_power_state);
+	}
+	oplus_prev_sync_power_state = oplus_sync_power_state;
+
+	if (oplus_sync_power_state == SDE_MODE_DPMS_ON) {
+		if (g_frame_count <= IGNORE_FRAME_COUNT_AFTER_POWER_ON) {
+			g_frame_count++;
+		}
+	} else {
+		g_frame_count = 0;
+	}
+
+	/* OPLUS: Check commit time and trigger evtlog dump if too slow */
+	oplus_elapsed_us = ktime_us_delta(ktime_get(), oplus_start_time);
+	/* Skip timing check if power mode changed (screen on/off frames) */
+	if ((oplus_sync_power_state == SDE_MODE_DPMS_ON) && (g_frame_count > IGNORE_FRAME_COUNT_AFTER_POWER_ON) &&
+			oplus_elapsed_us > OPLUS_COMMIT_TIME_THRESHOLD_US) {
+		elapsed_count ++;
+		SDE_ATRACE_INT("elapsed_occur_count", elapsed_count);
+		DRM_INFO("[OPLUS] slow commit detected: %llu us %lluth occur, (threshold=%d us)\n",
+		       oplus_elapsed_us, elapsed_count, OPLUS_COMMIT_TIME_THRESHOLD_US);
+		SDE_EVT32(oplus_elapsed_us, SDE_EVTLOG_ERROR);
+		/* Dump limited evtlog to kernel log to reduce log flood */
+		oplus_sde_evtlog_dump_limited(PRINT_XLOG_LINE);
+	}
+#endif /* OPLUS_FEATURE_DISPLAY */
 
 	drm_atomic_state_put(state);
 

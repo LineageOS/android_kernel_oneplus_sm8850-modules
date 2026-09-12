@@ -399,6 +399,13 @@ static int dp_power_clk_set_rate(struct dp_power_private *power,
 		rc = msm_dss_enable_clk(mp->clk_config, mp->num_clk, 1);
 		if (rc) {
 			DP_ERR("failed to enable clks\n");
+#ifdef OPLUS_FEATURE_DISPLAY
+			oplus_sde_evtlog_dump_all();
+			if (get_eng_version() == FACTORY || get_eng_version() == AGING || get_eng_version() == HIGH_TEMP_AGING) {
+				SDE_EVT32(0x11, 0x22, 0x33);
+				SDE_DBG_DUMP(SDE_DBG_BUILT_IN_ALL, "panic");
+			}
+#endif
 			goto exit;
 		}
 	} else {

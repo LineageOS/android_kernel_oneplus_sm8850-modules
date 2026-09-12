@@ -21,6 +21,10 @@
 
 #define DIVCEIL(a, b)  (((a) + (b) - 1) / (b))
 
+#if defined(CONFIG_PXLW_IRIS) || defined(CONFIG_PXLW_SOFT_IRIS)
+#include "dsi_iris_api.h"
+#endif
+
 void log_sde_reg_write(struct sde_hw_blk_reg_map *c, u32 reg_off,
 		u32 val, const char *name)
 {
@@ -6125,10 +6129,22 @@ void reg_dmav2_setup_dspp_igcv4(struct sde_hw_dspp *ctx, void *cfg)
 		data[j++] = (u16)(lut_cfg->c0[i] << 4);
 		data[j++] = (u16)(lut_cfg->c1[i] << 4);
 	}
+#if defined(CONFIG_PXLW_IRIS) || defined(CONFIG_PXLW_SOFT_IRIS)
+	// WA: set last IGC values
+	if (iris_is_chip_supported() || iris_is_softiris_supported()) {
+		data[j++] = (u16)(lut_cfg->c2_last << 4);
+		data[j++] = (u16)(lut_cfg->c0_last << 4);
+		data[j++] = (u16)(lut_cfg->c1_last << 4);
+	} else {
+		data[j++] = lut_cfg->c2_last ? (u16)(lut_cfg->c2_last << 4) : (4095 << 4);
+		data[j++] = lut_cfg->c0_last ? (u16)(lut_cfg->c0_last << 4) : (4095 << 4);
+		data[j++] = lut_cfg->c1_last ? (u16)(lut_cfg->c1_last << 4) : (4095 << 4);
+	}
+#else
 	data[j++] = lut_cfg->c2_last ? (u16)(lut_cfg->c2_last << 4) : (4095 << 4);
 	data[j++] = lut_cfg->c0_last ? (u16)(lut_cfg->c0_last << 4) : (4095 << 4);
 	data[j++] = lut_cfg->c1_last ? (u16)(lut_cfg->c1_last << 4) : (4095 << 4);
-
+#endif
 	reg_dmav2_setup_dspp_igc_common(ctx, cfg, len, data, transfer_size_bytes, 0);
 	kvfree(data);
 }

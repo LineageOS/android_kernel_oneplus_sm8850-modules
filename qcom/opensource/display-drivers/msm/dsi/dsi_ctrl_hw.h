@@ -15,10 +15,28 @@
 #include "dsi_defs.h"
 #include "dsi_hw.h"
 
+#ifdef OPLUS_FEATURE_DISPLAY
+#include "oplus_debug.h"
+#endif /* OPLUS_FEATURE_DISPLAY */
+
 #define DSI_CTRL_HW_DBG(c, fmt, ...)	DRM_DEV_DEBUG(NULL, "[msm-dsi-debug]: DSI_%d: "\
 		fmt, c ? c->index : -1,	##__VA_ARGS__)
+#ifdef OPLUS_FEATURE_DISPLAY
+#undef DSI_CTRL_HW_ERR
+#ifdef OPLUS_TRACKPOINT_REPORT
+#include "oplus_trackpoint_report.h"
+#define DSI_CTRL_HW_ERR(c, fmt, ...) \
+	do { \
+		DRM_DEV_ERROR(NULL, "[msm-dsi-error]: DSI_%d: "\
+			fmt, c ? c->index : -1,	##__VA_ARGS__); \
+		display_exception_trackpoint_report("DisplayDriverID@@%d$$" pr_fmt(fmt), \
+			OPLUS_DISP_Q_ERROR_CTRL_HW, ##__VA_ARGS__); \
+	} while(0)
+#else
 #define DSI_CTRL_HW_ERR(c, fmt, ...)	DRM_DEV_ERROR(NULL, "[msm-dsi-error]: DSI_%d: "\
 		fmt, c ? c->index : -1,	##__VA_ARGS__)
+#endif /* OPLUS_TRACKPOINT_REPORT */
+#endif /* OPLUS_FEATURE_DISPLAY */
 #define DSI_CTRL_HW_INFO(c, fmt, ...)	DRM_DEV_INFO(NULL, "[msm-dsi-info]: DSI_%d: "\
 		fmt, c ? c->index : -1,	##__VA_ARGS__)
 
