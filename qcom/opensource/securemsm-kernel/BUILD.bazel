@@ -91,6 +91,14 @@ ddk_headers(
 )
 
 ddk_headers(
+    name = "smmu_proxy_uapi_headers",
+    hdrs = glob([
+        "smmu-proxy/include/uapi/linux/*.h",
+    ]),
+    includes = ["smmu-proxy/include/uapi"],
+)
+
+ddk_headers(
     name = "smmu_proxy_headers",
     hdrs = glob([
         "smmu-proxy/*.h",
