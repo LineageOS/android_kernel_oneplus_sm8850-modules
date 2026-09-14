@@ -1,7 +1,7 @@
 load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
 load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
-load("//vendor/qcom/opensource/mm-drivers:target_variants.bzl", "get_all_variants")
+load("//vendor/qcom/sm8850-modules/qcom/opensource/mm-drivers:target_variants.bzl", "get_all_variants")
 
 def _define_module(target, variant):
     tv = "{}_{}".format(target, variant)
