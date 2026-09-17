@@ -64,6 +64,7 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-trigger_self_refresh-command",
 	"qcom,mdss-dsi-fps-switch-command",
 	"qcom,mdss-dsi-set-em-pulse-command",
+	"Privacy layer not parsed from DTSI, generated dynamically",
 #ifdef OPLUS_FEATURE_DISPLAY_ADFR
 	"qcom,mdss-dsi-adfr-auto-on-command",
 	"qcom,mdss-dsi-adfr-auto-off-command",
@@ -353,6 +354,7 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-trigger_self_refresh-command-state",
 	"qcom,mdss-dsi-fps-switch-command-state",
 	"qcom,mdss-dsi-set-em-pulse-command-state",
+	"Privacy layer not parsed from DTSI, generated dynamically",
 #ifdef OPLUS_FEATURE_DISPLAY_ADFR
 	"qcom,mdss-dsi-adfr-auto-on-command-state",
 	"qcom,mdss-dsi-adfr-auto-off-command-state",
