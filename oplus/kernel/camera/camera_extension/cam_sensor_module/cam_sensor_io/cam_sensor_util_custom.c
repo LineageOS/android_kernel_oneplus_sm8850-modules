@@ -235,7 +235,7 @@ int cam_ext_res_mgr_gpio_request(struct device *dev, uint gpio,
 	return rc;
 }
 
-void cam_ext_res_mgr_gpio_free_arry(const struct gpio *array, size_t num)
+void cam_ext_res_mgr_gpio_free_arry(const struct cam_soc_gpio *array, size_t num)
 {
 	while (num--) {
 		CAM_EXT_INFO(CAM_EXT_SENSOR, "%s free array[%d].gpio", __func__, num);
@@ -249,7 +249,7 @@ int cam_ext_sensor_util_request_gpio_table(struct cam_hw_soc_info *soc_info,
 	int rc = 0, i = 0;
 	u8 size = 0;
 	struct cam_soc_gpio_data *gpio_conf = NULL;
-	struct gpio *gpio_tbl = NULL;
+	struct cam_soc_gpio *gpio_tbl = NULL;
 
 	if (!soc_info) {
 		CAM_EXT_ERR(CAM_EXT_SENSOR, "%s invalid params", __func__);

@@ -37,7 +37,7 @@ int cam_ext_pinctrl_init(struct msm_pinctrl_info *sensor_pctrl,
 int cam_ext_res_mgr_gpio_request(struct device *dev, uint gpio,
 	unsigned long flags, const char *label);
 
-void cam_ext_res_mgr_gpio_free_arry(const struct gpio *array, size_t num);
+void cam_ext_res_mgr_gpio_free_arry(const struct cam_soc_gpio *array, size_t num);
 
 int cam_ext_sensor_util_request_gpio_table(struct cam_hw_soc_info *soc_info,
 	int gpio_en);
