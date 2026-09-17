@@ -133,6 +133,13 @@ def _define_modules_for_target_variant(target, variant):
             ":{}_wlan_firmware_service".format(tv),
             ":wlan-platform-headers",
         ]
+        #ifdef OPLUS_FEATURE_WIFI_MAC
+        #lixiong2@CONNECTIVITY.HARDWARE.WIFI.MAC.9217452, add oplus symbol for 8850
+        deps += [
+            modules_label("oplus/kernel/boot:oplus_bsp_boot_projectinfo"),
+            modules_label("oplus/kernel/boot:oplus_bsp_bootmode"),
+        ]
+        #endif
         if plat_ipc_qmi_svc_enabled:
             deps += [
                 ":{}_cnss_plat_ipc_qmi_svc".format(tv),
@@ -185,6 +192,12 @@ def _define_modules_for_target_variant(target, variant):
             includes = ["cnss", "cnss_utils"],
             kconfig = "cnss2/Kconfig",
             defconfig = defconfig,
+            #ifdef OPLUS_FEATURE_WIFI_FTM
+            local_defines = [
+                "OPLUS_FEATURE_WIFI_MAC",
+                "OPLUS_FEATURE_WIFI_BDF",
+            ],
+            #endif /* OPLUS_FEATURE_WIFI_FTM */
             conditional_srcs = {
                 "CONFIG_CNSS2_QMI": {
                     True: [

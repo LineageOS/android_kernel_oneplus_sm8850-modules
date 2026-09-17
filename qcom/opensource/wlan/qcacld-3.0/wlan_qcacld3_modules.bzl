@@ -2839,6 +2839,7 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
         includes = ipaths + ["."],
         kconfig = kconfig,
         defconfig = defconfig,
+        local_defines = ["OPLUS_BUG_STABILITY"],
         conditional_srcs = combined_conditional_srcs,
         copts = copts,
         out = out,
