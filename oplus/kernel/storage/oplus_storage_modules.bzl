@@ -1,7 +1,7 @@
 load(":repo_paths.bzl", "modules_label")
 
-load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_kernel_version", "bazel_support_platform")
-load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
+load(":oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_kernel_version", "bazel_support_platform")
+load(":oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
 def define_oplus_storage_modules():
     kernel_version = oplus_ddk_get_kernel_version()
 

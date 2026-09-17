@@ -1,10 +1,10 @@
 load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/kernel/kleaf:hermetic_tools.bzl", "hermetic_genrule")
-load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module",
+load(":oplus_modules_define.bzl", "define_oplus_ddk_module",
     "oplus_ddk_get_kernel_version",
     "bazel_support_platform")
-load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
+load(":oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
 load(":kleaf-scripts/version.bzl", "version_compare")
 
 load(":kleaf-scripts/prebuild.bzl", "oplus_chg_ic_prebuild")

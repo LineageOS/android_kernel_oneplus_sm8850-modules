@@ -1,4 +1,4 @@
-load("//build/kernel/oplus:oplus_modules_define.bzl",
+load(":oplus_modules_define.bzl",
     "oplus_ddk_get_target",
     "oplus_ddk_get_variant")
 

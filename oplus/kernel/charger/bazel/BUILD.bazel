@@ -4,7 +4,7 @@ package(
     ],
 )
 
-load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
+load(":oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
 
 load(":kleaf-scripts/global_define.bzl", "global_define")
 load(":config/modules.bzl", "define_oplus_cfg_module")

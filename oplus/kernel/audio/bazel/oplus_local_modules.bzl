@@ -1,5 +1,5 @@
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
-load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "bazel_support_platform", "oplus_ddk_get_kernel_version")
+load(":oplus_modules_define.bzl", "define_oplus_ddk_module", "bazel_support_platform", "oplus_ddk_get_kernel_version")
 
 def define_oplus_local_modules():
     kernel_version = oplus_ddk_get_kernel_version()

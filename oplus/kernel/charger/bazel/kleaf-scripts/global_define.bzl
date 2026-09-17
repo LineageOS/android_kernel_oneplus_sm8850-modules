@@ -1,4 +1,4 @@
-load("//build/kernel/oplus:oplus_modules_define.bzl",
+load(":oplus_modules_define.bzl",
     "bazel_support_platform")
 load(":kleaf-scripts/kconfig.bzl", "define_oplus_chg_kconfig")
 load(":kleaf-scripts/defconfig.bzl", "define_oplus_chg_defconfig")

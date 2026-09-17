@@ -1,4 +1,4 @@
-load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module")
+load(":oplus_modules_define.bzl", "define_oplus_ddk_module")
 
 def define_oplus_thermal_local_modules():
     define_oplus_ddk_module(

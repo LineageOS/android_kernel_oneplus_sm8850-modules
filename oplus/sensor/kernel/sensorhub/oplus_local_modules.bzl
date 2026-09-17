@@ -1,7 +1,7 @@
 load(":repo_paths.bzl", "modules_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
-load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_kernel_version", "oplus_ddk_get_target", "oplus_ddk_get_variant", "bazel_support_platform")
-load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
+load(":oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_kernel_version", "oplus_ddk_get_target", "oplus_ddk_get_variant", "bazel_support_platform")
+load(":oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
 
 def version_compare(v1, v2):
     v1_parts = [int(x) for x in v1.split(".")]
