@@ -1,1 +1,1 @@
-../../../../../kernel_platform/common/drivers/gpio/gpiolib.h
+../../../../../../../common/drivers/gpio/gpiolib.h
