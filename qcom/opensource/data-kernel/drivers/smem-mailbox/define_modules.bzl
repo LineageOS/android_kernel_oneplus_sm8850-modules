@@ -5,14 +5,8 @@ load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 def define_modules(target, variant):
     kernel_build_variant = "{}_{}".format(target, variant)
 
-    deps = select({
-        "//build/kernel/kleaf:socrepo_true": [soc_label("all_headers"), soc_label("{}/drivers/soc/qcom/smem".format(kernel_build_variant))],
-        "//build/kernel/kleaf:socrepo_false": ["//msm-kernel:all_headers"],
-    })
-    kernel_build = select({
-        "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(kernel_build_variant)),
-        "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(kernel_build_variant),
-    })
+    deps = [soc_label("all_headers"), soc_label("{}/drivers/soc/qcom/smem".format(kernel_build_variant))]
+    kernel_build = soc_label("{}_base_kernel".format(kernel_build_variant))
 
     ddk_module(
         name = "{}_smem_mailbox".format(kernel_build_variant),

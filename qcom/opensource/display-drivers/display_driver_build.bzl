@@ -78,54 +78,42 @@ def display_module_entry(hdrs = []):
 
 def define_target_variant_modules(target, variant, registry, modules, config_options = [], vm_target = False):
     kernel_build_tv = "{}_{}".format(target, variant)
-    deps = select({
-            "//build/kernel/kleaf:socrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/firmware/qcom/qcom-scm".format(kernel_build_tv)),
-            soc_label("{}/drivers/pinctrl/qcom/pinctrl-msm".format(kernel_build_tv)),
-            soc_label("{}/drivers/clk/qcom/clk-qcom".format(kernel_build_tv)),
-            soc_label("{}/drivers/iommu/qcom_iommu_util".format(kernel_build_tv)),
-            soc_label("{}/drivers/virt/gunyah/gh_irq_lend".format(kernel_build_tv)),
-            soc_label("{}/drivers/virt/gunyah/gh_rm_drv".format(kernel_build_tv)),
-            soc_label("{}/drivers/virt/gunyah/gh_mem_notifier".format(kernel_build_tv)),
-            soc_label("{}/drivers/virt/gunyah/gh_msgq".format(kernel_build_tv)),
-            soc_label("{}/drivers/spmi/spmi-pmic-arb".format(kernel_build_tv)),
-            soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(kernel_build_tv)),
-            soc_label("{}/drivers/iommu/msm_dma_iommu_mapping".format(kernel_build_tv)),
-            soc_label("{}/drivers/soc/qcom/socinfo".format(kernel_build_tv)),
-            soc_label("{}/drivers/soc/qcom/panel_event_notifier".format(kernel_build_tv)),
-            soc_label("{}/drivers/soc/qcom/qcom_rpmh".format(kernel_build_tv)),
-        ],
-        "//build/kernel/kleaf:socrepo_false": ["//msm-kernel:all_headers"],
-        })
+    deps = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/firmware/qcom/qcom-scm".format(kernel_build_tv)),
+        soc_label("{}/drivers/pinctrl/qcom/pinctrl-msm".format(kernel_build_tv)),
+        soc_label("{}/drivers/clk/qcom/clk-qcom".format(kernel_build_tv)),
+        soc_label("{}/drivers/iommu/qcom_iommu_util".format(kernel_build_tv)),
+        soc_label("{}/drivers/virt/gunyah/gh_irq_lend".format(kernel_build_tv)),
+        soc_label("{}/drivers/virt/gunyah/gh_rm_drv".format(kernel_build_tv)),
+        soc_label("{}/drivers/virt/gunyah/gh_mem_notifier".format(kernel_build_tv)),
+        soc_label("{}/drivers/virt/gunyah/gh_msgq".format(kernel_build_tv)),
+        soc_label("{}/drivers/spmi/spmi-pmic-arb".format(kernel_build_tv)),
+        soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(kernel_build_tv)),
+        soc_label("{}/drivers/iommu/msm_dma_iommu_mapping".format(kernel_build_tv)),
+        soc_label("{}/drivers/soc/qcom/socinfo".format(kernel_build_tv)),
+        soc_label("{}/drivers/soc/qcom/panel_event_notifier".format(kernel_build_tv)),
+        soc_label("{}/drivers/soc/qcom/qcom_rpmh".format(kernel_build_tv)),
+    ]
 
     if not vm_target:
-        deps += select({
-           "//build/kernel/kleaf:socrepo_true": [soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(kernel_build_tv))],
-           "//build/kernel/kleaf:socrepo_false": [],
-        })
+        deps += [soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(kernel_build_tv))]
 
         deps += [
             modules_label("qcom/opensource/mm-drivers:mm_drivers_headers"),
         ]
-        deps += select({
-            "//build/kernel/kleaf:socrepo_true": [
-                soc_label("{}/drivers/gpu/drm/display/drm_display_helper".format(kernel_build_tv)),
-                soc_label("{}/drivers/soc/qcom/crm-v2".format(kernel_build_tv)),
-                soc_label("{}/drivers/soc/qcom/llcc-qcom".format(kernel_build_tv)),
-                soc_label("{}/drivers/soc/qcom/altmode-glink".format(kernel_build_tv)),
-                soc_label("{}/kernel/trace/qcom_ipc_logging".format(kernel_build_tv)),
-                soc_label("{}/drivers/usb/dwc3/dwc3-msm".format(kernel_build_tv)),
-                soc_label("{}/drivers/soc/qcom/wcd_usbss_i2c".format(kernel_build_tv)),
-		soc_label("{}/drivers/soc/qcom/fsa4480_i2c".format(kernel_build_tv)),
-            ],
-            "//build/kernel/kleaf:socrepo_false": [],
-        })
+        deps += [
+            soc_label("{}/drivers/gpu/drm/display/drm_display_helper".format(kernel_build_tv)),
+            soc_label("{}/drivers/soc/qcom/crm-v2".format(kernel_build_tv)),
+            soc_label("{}/drivers/soc/qcom/llcc-qcom".format(kernel_build_tv)),
+            soc_label("{}/drivers/soc/qcom/altmode-glink".format(kernel_build_tv)),
+            soc_label("{}/kernel/trace/qcom_ipc_logging".format(kernel_build_tv)),
+            soc_label("{}/drivers/usb/dwc3/dwc3-msm".format(kernel_build_tv)),
+            soc_label("{}/drivers/soc/qcom/wcd_usbss_i2c".format(kernel_build_tv)),
+            soc_label("{}/drivers/soc/qcom/fsa4480_i2c".format(kernel_build_tv)),
+        ]
 
-    kernel_build = select({
-        "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(kernel_build_tv)),
-        "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(kernel_build_tv),
-    })
+    kernel_build = soc_label("{}_base_kernel".format(kernel_build_tv))
     modules = [registry.get(module_name) for module_name in modules]
     options = _get_kernel_build_options(modules, config_options)
     build_print = lambda message: print("{}: {}".format(kernel_build_tv, message))

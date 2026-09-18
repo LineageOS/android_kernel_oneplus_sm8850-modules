@@ -6,25 +6,14 @@ def define_modules(target, variant):
     tv = "{}_{}".format(target, variant)
     copts = []
     deps = []
-    deps = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/pinctrl/qcom/pinctrl-msm".format(tv)),
-            soc_label("{}/kernel/trace/qcom_ipc_logging".format(tv)),
-        ],
-        "//build/qcom_build_extensions:qtisocrepo_false": [
-            "//msm-kernel:all_headers",
-        ],
-    })
-    kernel_build = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(tv)),
-        "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(tv),
-    })
+    deps = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/pinctrl/qcom/pinctrl-msm".format(tv)),
+        soc_label("{}/kernel/trace/qcom_ipc_logging".format(tv)),
+    ]
+    kernel_build = soc_label("{}_base_kernel".format(tv))
     if target == "sun":
-        deps += select({
-            "//build/qcom_build_extensions:qtisocrepo_true": [soc_label("{}/drivers/misc/qseecom_proxy".format(tv))],
-            "//build/qcom_build_extensions:qtisocrepo_false": [],
-        })
+        deps += [soc_label("{}/drivers/misc/qseecom_proxy".format(tv))]
     if target == "sun":
         copts.append("-DNFC_SECURE_PERIPHERAL_ENABLED")
         deps += [

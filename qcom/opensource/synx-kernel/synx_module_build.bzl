@@ -80,19 +80,11 @@ def create_module_registry(hdrs = []):
 
 def define_target_variant_modules(target, variant, registry, modules, config_options = []):
     kernel_build = "{}_{}".format(target, variant)
-    headers = select({
-        "//build/kernel/kleaf:socrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/remoteproc/rproc_qcom_common".format(kernel_build)),
-        ],
-        "//build/kernel/kleaf:socrepo_false": [
-            "//msm-kernel:all_headers",
-        ],
-    })
-    kernel_build_label = select({
-        "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(kernel_build)),
-        "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(kernel_build),
-    })
+    headers = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/remoteproc/rproc_qcom_common".format(kernel_build)),
+    ]
+    kernel_build_label = soc_label("{}_base_kernel".format(kernel_build))
 
     modules = [registry.get(module_name) for module_name in modules]
     options = _get_kernel_build_options(modules, config_options)

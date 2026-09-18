@@ -12,14 +12,8 @@ def define_modules(target, variant):
     tv = "{}_{}".format(target, variant)
     rule_base = "{}_qbt_handler".format(tv)
 
-    ddk_deps = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [soc_label("all_headers")],
-        "//build/qcom_build_extensions:qtisocrepo_false": ["//msm-kernel:all_headers"],
-    })
-    base_kernel = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(tv)),
-        "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(tv),
-    })
+    ddk_deps = [soc_label("all_headers")]
+    base_kernel = soc_label("{}_base_kernel".format(tv))
 
     ddk_module(
         name = rule_base,

@@ -138,44 +138,34 @@ def define_target_variant_module(target, variant):
     rule_name = "{}_msm_kgsl".format(tv)
 
     if target in [ "neo-la" ]:
-        kernel_build = select({
-            "//build/kernel/kleaf:microxr_kernel_build_true": "//:target_kernel_build",
-            "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(tv)),
-            "//conditions:default": "//msm-kernel:{}".format(tv),
-        })
+        kernel_build = soc_label("{}_base_kernel".format(tv))
     else:
-        kernel_build = select({
-            "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(tv)),
-            "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(tv),
-        })
+        kernel_build = soc_label("{}_base_kernel".format(tv))
 
     ext_deps = external_deps(target, variant)
 
-    ddk_deps = select({
-                "//build/kernel/kleaf:socrepo_true": [
-                  soc_label("all_headers"),
-                  soc_label("{}/drivers/clk/qcom/clk-qcom".format(tv)),
-                  soc_label("{}/drivers/devfreq/governor_msm_adreno_tz".format(tv)),
-                  soc_label("{}/drivers/firmware/qcom/qcom-scm".format(tv)),
-                  soc_label("{}/drivers/hwtracing/coresight/coresight".format(tv)),
-                  soc_label("{}/drivers/iommu/qcom_iommu_util".format(tv)),
-                  soc_label("{}/drivers/remoteproc/qcom_q6v5_pas".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/cmd-db".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/dcvs/qcom-dcvs".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/llcc-qcom".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/mdt_loader".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/minidump".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/msm_performance".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/qcom_aoss".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/secure_buffer".format(tv)),
-                  soc_label("{}/drivers/soc/qcom/socinfo".format(tv)),
-                  soc_label("{}/kernel/msm_sysstats".format(tv)),
-                  #"//vendor/qcom/opensource/securemsm-kernel:{}_smcinvoke_dlkm".format(tv),
-                ],
-                "//build/kernel/kleaf:socrepo_false": [ "//msm-kernel:all_headers" ],
-        })
+    ddk_deps = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/clk/qcom/clk-qcom".format(tv)),
+        soc_label("{}/drivers/devfreq/governor_msm_adreno_tz".format(tv)),
+        soc_label("{}/drivers/firmware/qcom/qcom-scm".format(tv)),
+        soc_label("{}/drivers/hwtracing/coresight/coresight".format(tv)),
+        soc_label("{}/drivers/iommu/qcom_iommu_util".format(tv)),
+        soc_label("{}/drivers/remoteproc/qcom_q6v5_pas".format(tv)),
+        soc_label("{}/drivers/soc/qcom/cmd-db".format(tv)),
+        soc_label("{}/drivers/soc/qcom/dcvs/qcom-dcvs".format(tv)),
+        soc_label("{}/drivers/soc/qcom/llcc-qcom".format(tv)),
+        soc_label("{}/drivers/soc/qcom/mdt_loader".format(tv)),
+        soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(tv)),
+        soc_label("{}/drivers/soc/qcom/minidump".format(tv)),
+        soc_label("{}/drivers/soc/qcom/msm_performance".format(tv)),
+        soc_label("{}/drivers/soc/qcom/qcom_aoss".format(tv)),
+        soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(tv)),
+        soc_label("{}/drivers/soc/qcom/secure_buffer".format(tv)),
+        soc_label("{}/drivers/soc/qcom/socinfo".format(tv)),
+        soc_label("{}/kernel/msm_sysstats".format(tv)),
+        #"//vendor/qcom/opensource/securemsm-kernel:{}_smcinvoke_dlkm".format(tv),
+    ]
 
     ddk_module(
         name = rule_name,

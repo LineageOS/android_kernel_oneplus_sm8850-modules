@@ -8,15 +8,9 @@ def define_mem(target, variant):
 
     target_copts = []
 
-    deps_mem = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [soc_label("all_headers")],
-        "//build/qcom_build_extensions:qtisocrepo_false": ["//msm-kernel:all_headers"],
-    })
+    deps_mem = [soc_label("all_headers")]
 
-    kernel_build = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(kernel_build_variant)),
-        "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(kernel_build_variant),
-    })
+    kernel_build = soc_label("{}_base_kernel".format(kernel_build_variant))
 
     ddk_module(
         name = "{}_rmnet_mem".format(kernel_build_variant),

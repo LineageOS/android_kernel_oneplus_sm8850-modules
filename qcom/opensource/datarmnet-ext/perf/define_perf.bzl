@@ -6,15 +6,9 @@ def define_perf(target, variant):
     kernel_build_variant = "{}_{}".format(target, variant)
     include_base = "../../../{}".format(native.package_name())
 
-    deps_perf = select({
-	"//build/qcom_build_extensions:qtisocrepo_true": [soc_label("all_headers")],
-	"//build/qcom_build_extensions:qtisocrepo_false": ["//msm-kernel:all_headers"],
-    })
+    deps_perf = [soc_label("all_headers")]
 
-    kernel_build = select({
-	"//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(kernel_build_variant)),
-	"//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(kernel_build_variant),
-    })
+    kernel_build = soc_label("{}_base_kernel".format(kernel_build_variant))
 
     ddk_module(
         name = "{}_perf".format(kernel_build_variant),

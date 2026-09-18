@@ -2560,38 +2560,25 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
     hw_ipaths = _hw_header_map[hw]
 
     if target != "sa510m":
-        deps = select({
-            "//build/qcom_build_extensions:qtisocrepo_true": [
-                soc_label("all_headers"),
-                soc_label("{}/net/wireless/cfg80211".format(tv)),
-                soc_label("{}/drivers/iommu/qcom_iommu_util".format(tv)),
-                soc_label("{}/drivers/remoteproc/rproc_qcom_common".format(tv)),
-                soc_label("{}/drivers/soc/qcom/qmi_helpers".format(tv)),
-                soc_label("{}/kernel/sched/walt/sched-walt".format(tv)),
-            ],
-            "//build/qcom_build_extensions:qtisocrepo_false": ["//msm-kernel:all_headers"],
-        })
+        deps = [
+            soc_label("all_headers"),
+            soc_label("{}/net/wireless/cfg80211".format(tv)),
+            soc_label("{}/drivers/iommu/qcom_iommu_util".format(tv)),
+            soc_label("{}/drivers/remoteproc/rproc_qcom_common".format(tv)),
+            soc_label("{}/drivers/soc/qcom/qmi_helpers".format(tv)),
+            soc_label("{}/kernel/sched/walt/sched-walt".format(tv)),
+        ]
 
-        deps += select({
-            "//build/qcom_build_extensions:qtisocrepo_true": [
-                soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(tv)),
-            ],
-            "//build/qcom_build_extensions:qtisocrepo_false": [],
-        })
+        deps += [
+            soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(tv)),
+        ]
     else:
         deps = [ "//msm-kernel:all_headers_arm", ]
 
     if target == "neo-la":
-        kernel_build = select({
-            "//build/kernel/kleaf:microxr_kernel_build_true": "//:target_kernel_build",
-            "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(tv)),
-            "//conditions:default": "//msm-kernel:{}".format(tv),
-        })
+        kernel_build = soc_label("{}_base_kernel".format(tv))
     else:
-        kernel_build = select({
-            "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(tv)),
-            "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(tv),
-        })
+        kernel_build = soc_label("{}_base_kernel".format(tv))
 
     ipaths = chipset_ipaths + hw_ipaths + _fixed_ipaths
 

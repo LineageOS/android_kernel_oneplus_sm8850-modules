@@ -39,24 +39,18 @@ def define_modules(target, variant):
               "CONFIG_IPA_RMNET_MEM=y".format(include_base),
              )
 
-    kernel_build = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(kernel_build_variant)),
-        "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(kernel_build_variant),
-    })
+    kernel_build = soc_label("{}_base_kernel".format(kernel_build_variant))
 
     gsim_deps = [
         ":gsi_headers",
         ":include_headers",
     ]
 
-    gsim_deps += select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/kernel/trace/qcom_ipc_logging".format(kernel_build_variant)),
-            soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(kernel_build_variant)),
-        ],
-        "//build/qcom_build_extensions:qtisocrepo_false": ["//msm-kernel:all_headers"],
-    })
+    gsim_deps += [
+        soc_label("all_headers"),
+        soc_label("{}/kernel/trace/qcom_ipc_logging".format(kernel_build_variant)),
+        soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(kernel_build_variant)),
+    ]
 
     ipam_deps = [
         ":{}_config_headers".format(variant),
@@ -67,25 +61,20 @@ def define_modules(target, variant):
         ":{}_gsim".format(kernel_build_variant),
     ]
 
-    ipam_deps += select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/soc/qcom/mdt_loader".format(kernel_build_variant)),
-            soc_label("{}/kernel/trace/qcom_ipc_logging".format(kernel_build_variant)),
-            soc_label("{}/drivers/firmware/qcom/qcom-scm".format(kernel_build_variant)),
-            soc_label("{}/drivers/iommu/qcom_iommu_util".format(kernel_build_variant)),
-            soc_label("{}/drivers/soc/qcom/smem".format(kernel_build_variant)),
-            soc_label("{}/drivers/soc/qcom/qcom_aoss".format(kernel_build_variant)),
-            soc_label("{}/drivers/soc/qcom/qcom_ramdump".format(kernel_build_variant)),
-            soc_label("{}/drivers/soc/qcom/qmi_helpers".format(kernel_build_variant)),
-            soc_label("{}/drivers/remoteproc/rproc_qcom_common".format(kernel_build_variant)),
-            soc_label("{}/drivers/usb/gadget/function/usb_f_gsi".format(kernel_build_variant)),
-            soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(kernel_build_variant)),
-        ],
-        "//build/qcom_build_extensions:qtisocrepo_false": [
-            "//msm-kernel:all_headers",
-        ],
-    })
+    ipam_deps += [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/soc/qcom/mdt_loader".format(kernel_build_variant)),
+        soc_label("{}/kernel/trace/qcom_ipc_logging".format(kernel_build_variant)),
+        soc_label("{}/drivers/firmware/qcom/qcom-scm".format(kernel_build_variant)),
+        soc_label("{}/drivers/iommu/qcom_iommu_util".format(kernel_build_variant)),
+        soc_label("{}/drivers/soc/qcom/smem".format(kernel_build_variant)),
+        soc_label("{}/drivers/soc/qcom/qcom_aoss".format(kernel_build_variant)),
+        soc_label("{}/drivers/soc/qcom/qcom_ramdump".format(kernel_build_variant)),
+        soc_label("{}/drivers/soc/qcom/qmi_helpers".format(kernel_build_variant)),
+        soc_label("{}/drivers/remoteproc/rproc_qcom_common".format(kernel_build_variant)),
+        soc_label("{}/drivers/usb/gadget/function/usb_f_gsi".format(kernel_build_variant)),
+        soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(kernel_build_variant)),
+    ]
 
     ipanetm_deps = [
         ":{}_config_headers".format(variant),
@@ -96,16 +85,11 @@ def define_modules(target, variant):
         ":ipa_clients",
     ]
 
-    ipanetm_deps += select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/soc/qcom/mdt_loader".format(kernel_build_variant)),
-            soc_label("{}/kernel/trace/qcom_ipc_logging".format(kernel_build_variant)),
-        ],
-        "//build/qcom_build_extensions:qtisocrepo_false": [
-            "//msm-kernel:all_headers",
-        ],
-    })
+    ipanetm_deps += [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/soc/qcom/mdt_loader".format(kernel_build_variant)),
+        soc_label("{}/kernel/trace/qcom_ipc_logging".format(kernel_build_variant)),
+    ]
 
     if variant == "consolidate":
         ipatestm_deps = [
@@ -117,14 +101,9 @@ def define_modules(target, variant):
             ":ipa_clients",
             ":{}_gsim".format(kernel_build_variant),
         ]
-        ipatestm_deps += select({
-            "//build/qcom_build_extensions:qtisocrepo_true": [
-                soc_label("all_headers"),
-            ],
-            "//build/qcom_build_extensions:qtisocrepo_false": [
-                "//msm-kernel:all_headers",
-            ],
-        })
+        ipatestm_deps += [
+            soc_label("all_headers"),
+        ]
 
     ddk_module(
         name = "{}_gsim".format(kernel_build_variant),

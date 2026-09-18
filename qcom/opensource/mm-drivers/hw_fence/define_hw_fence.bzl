@@ -6,24 +6,16 @@ load("//vendor/qcom/sm8850-modules/qcom/opensource/mm-drivers:target_variants.bz
 def _define_module(target, variant):
     tv = "{}_{}".format(target, variant)
 
-    deps = select({
-        "//build/kernel/kleaf:socrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/remoteproc/rproc_qcom_common".format(tv)),
-            soc_label("{}/drivers/remoteproc/qcom_q6v5_pas".format(tv)),
-            soc_label("{}/drivers/virt/gunyah/gh_dbl".format(tv)),
-            soc_label("{}/drivers/virt/gunyah/gh_rm_drv".format(tv)),
-            soc_label("{}/drivers/firmware/qcom/qcom-scm".format(tv)),
-            soc_label("{}/drivers/soc/qcom/hab/msm_hab".format(tv)),
-        ],
-        "//build/kernel/kleaf:socrepo_false": [
-            "//msm-kernel:all_headers",
-        ],
-    })
-    kernel_build = select({
-        "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(tv)),
-        "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(tv),
-    })
+    deps = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/remoteproc/rproc_qcom_common".format(tv)),
+        soc_label("{}/drivers/remoteproc/qcom_q6v5_pas".format(tv)),
+        soc_label("{}/drivers/virt/gunyah/gh_dbl".format(tv)),
+        soc_label("{}/drivers/virt/gunyah/gh_rm_drv".format(tv)),
+        soc_label("{}/drivers/firmware/qcom/qcom-scm".format(tv)),
+        soc_label("{}/drivers/soc/qcom/hab/msm_hab".format(tv)),
+    ]
+    kernel_build = soc_label("{}_base_kernel".format(tv))
 
     if target in ["pineapple"]:
         target_config = "defconfig"

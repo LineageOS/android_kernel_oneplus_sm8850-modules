@@ -6,15 +6,9 @@ def define_aps(target, variant):
     kernel_build_variant = "{}_{}".format(target, variant)
     include_base = "../../../{}".format(native.package_name())
 
-    deps_aps = select({
-	"//build/qcom_build_extensions:qtisocrepo_true": [soc_label("all_headers")],
-	"//build/qcom_build_extensions:qtisocrepo_false": ["//msm-kernel:all_headers"],
-    })
+    deps_aps = [soc_label("all_headers")]
 
-    kernel_build = select({
-	"//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(kernel_build_variant)),
-	"//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(kernel_build_variant),
-    })
+    kernel_build = soc_label("{}_base_kernel".format(kernel_build_variant))
 
     ddk_module(
         name = "{}_aps".format(kernel_build_variant),

@@ -5,21 +5,13 @@ load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
 
 def define_rmnet_ctl_module(target, variant):
     kernel_build_variant = "{}_{}".format(target, variant)
-    deps_ctl = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/soc/qcom/qmi_helpers".format(kernel_build_variant)),
-            soc_label("{}/kernel/trace/qcom_ipc_logging".format(kernel_build_variant)),
-        ],
-        "//build/qcom_build_extensions:qtisocrepo_false": [
-            "//msm-kernel:all_headers",
-        ],
-    })
+    deps_ctl = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/soc/qcom/qmi_helpers".format(kernel_build_variant)),
+        soc_label("{}/kernel/trace/qcom_ipc_logging".format(kernel_build_variant)),
+    ]
 
-    kernel_build = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(kernel_build_variant)),
-        "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(kernel_build_variant),
-    })
+    kernel_build = soc_label("{}_base_kernel".format(kernel_build_variant))
 
     ddk_module(
         name = "{}_rmnet_ctl".format(kernel_build_variant),
@@ -85,20 +77,12 @@ def define_rmnet_core_module(target, variant):
 
     #The below will take care of the defconfig
     #include_defconfig = ":{}_defconfig".format(variant)
-    deps_core = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/soc/qcom/qmi_helpers".format(kernel_build_variant)),
-        ],
-        "//build/qcom_build_extensions:qtisocrepo_false": [
-            "//msm-kernel:all_headers",
-        ],
-    })
+    deps_core = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/soc/qcom/qmi_helpers".format(kernel_build_variant)),
+    ]
 
-    kernel_build = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(kernel_build_variant)),
-        "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(kernel_build_variant),
-    })
+    kernel_build = soc_label("{}_base_kernel".format(kernel_build_variant))
 
     rmnet_core_deps = deps_core + [
         ":rmnet_core_headers",

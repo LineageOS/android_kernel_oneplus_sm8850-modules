@@ -6,14 +6,8 @@ load("//vendor/qcom/sm8850-modules/qcom/opensource/mm-drivers:target_variants.bz
 def _define_module(target, variant):
     tv = "{}_{}".format(target, variant)
 
-    deps = select({
-        "//build/kernel/kleaf:socrepo_true": [soc_label("all_headers")],
-        "//build/kernel/kleaf:socrepo_false": ["//msm-kernel:all_headers"],
-    })
-    kernel_build = select({
-        "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(tv)),
-        "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(tv),
-    })
+    deps = [soc_label("all_headers")]
+    kernel_build = soc_label("{}_base_kernel".format(tv))
 
     ddk_module(
         name = "{}_sync_fence".format(tv),

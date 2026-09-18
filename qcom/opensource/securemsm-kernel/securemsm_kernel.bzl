@@ -70,46 +70,31 @@ def define_target_variant_modules(target, variant, modules, extra_options = [], 
     modules = [securemsm_modules[module_name] for module_name in modules]
     tv = "{}_{}".format(target, variant)
 
-    deps = select({
-        "//build/kernel/kleaf:socrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf".format(kernel_build_variant)),
-            soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(kernel_build_variant)),
-            soc_label("{}/drivers/firmware/qcom/qcom-scm".format(kernel_build_variant)),
-            soc_label("{}/drivers/firmware/qcom/si_core/si_core_module".format(kernel_build_variant)),
-            soc_label("{}/drivers/iommu/qcom_iommu_util".format(kernel_build_variant)),
-            soc_label("{}/drivers/virt/gunyah/gh_msgq".format(kernel_build_variant)),
-            soc_label("{}/drivers/dma-buf/heaps/qcom_dma_heaps".format(kernel_build_variant)),
-        ],
-        "//build/kernel/kleaf:socrepo_false": ["//msm-kernel:all_headers"],
-    })
-    kernel_build = select({
-        "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(tv)),
-        "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(tv),
-    })
+    deps = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf".format(kernel_build_variant)),
+        soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(kernel_build_variant)),
+        soc_label("{}/drivers/firmware/qcom/qcom-scm".format(kernel_build_variant)),
+        soc_label("{}/drivers/firmware/qcom/si_core/si_core_module".format(kernel_build_variant)),
+        soc_label("{}/drivers/iommu/qcom_iommu_util".format(kernel_build_variant)),
+        soc_label("{}/drivers/virt/gunyah/gh_msgq".format(kernel_build_variant)),
+        soc_label("{}/drivers/dma-buf/heaps/qcom_dma_heaps".format(kernel_build_variant)),
+    ]
+    kernel_build = soc_label("{}_base_kernel".format(tv))
     if not vm_target or target == "alor-le" or target == "bengal-le":
-        deps += select({
-            "//build/kernel/kleaf:socrepo_true": [
-                soc_label("{}/drivers/soc/qcom/sps/sps_drv".format(kernel_build_variant)),
-            ],
-            "//build/kernel/kleaf:socrepo_false": [],
-        })
+        deps += [
+            soc_label("{}/drivers/soc/qcom/sps/sps_drv".format(kernel_build_variant)),
+        ]
     qseecom_proxy_targets = ["sun", "canoe", "vienna", "qcs610", "monaco", "alor-le", "malabar", "seraph", "vienna-le", "bengal", "shikra", "lahaina", "bengal-le"]
     if target in qseecom_proxy_targets:
-        deps += select({
-            "//build/kernel/kleaf:socrepo_true": [
-                soc_label("{}/drivers/misc/qseecom_proxy".format(kernel_build_variant)),
-            ],
-            "//build/kernel/kleaf:socrepo_false": [],
-        })
+        deps += [
+            soc_label("{}/drivers/misc/qseecom_proxy".format(kernel_build_variant)),
+        ]
 
     if target == "autogvm":
-        deps += select({
-            "//build/kernel/kleaf:socrepo_true": [
-                soc_label("{}/drivers/soc/qcom/hab/msm_hab".format(kernel_build_variant)),
-            ],
-            "//build/kernel/kleaf:socrepo_false": [],
-        })
+        deps += [
+            soc_label("{}/drivers/soc/qcom/hab/msm_hab".format(kernel_build_variant)),
+        ]
 
     target_local_defines = ["SMCINVOKE_TRACE_INCLUDE_PATH=../../../{}/smcinvoke/compat".format(native.package_name())]
 

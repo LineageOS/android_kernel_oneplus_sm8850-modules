@@ -56,26 +56,20 @@ def _define_target_modules(target, variant, registry, modules, product = None, c
     rule_prefix = "{}_{}_{}".format(target, variant, product) if product else "{}_{}".format(target, variant)
     enabled_modules = _get_enabled_module_objs(registry, modules)
     options = _combine_target_module_options(enabled_modules, config_options)
-    headers = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}_{}/drivers/firmware/qcom/qcom-scm".format(target, variant)),
-            soc_label("{}_{}/drivers/pinctrl/qcom/pinctrl-msm".format(target, variant)),
-            soc_label("{}_{}/drivers/soc/qcom/pdr_interface".format(target, variant)),
-            soc_label("{}_{}/drivers/remoteproc/rproc_qcom_common".format(target, variant)),
-            soc_label("{}_{}/drivers/base/regmap/qti-regmap-debugfs".format(target, variant)),
-            soc_label("{}_{}/drivers/power/supply/qti_battery_charger".format(target, variant)),
-            soc_label("{}_{}/drivers/soc/qcom/wcd_usbss_i2c".format(target, variant)),
+    headers = ([
+        soc_label("all_headers"),
+        soc_label("{}_{}/drivers/firmware/qcom/qcom-scm".format(target, variant)),
+        soc_label("{}_{}/drivers/pinctrl/qcom/pinctrl-msm".format(target, variant)),
+        soc_label("{}_{}/drivers/soc/qcom/pdr_interface".format(target, variant)),
+        soc_label("{}_{}/drivers/remoteproc/rproc_qcom_common".format(target, variant)),
+        soc_label("{}_{}/drivers/base/regmap/qti-regmap-debugfs".format(target, variant)),
+        soc_label("{}_{}/drivers/power/supply/qti_battery_charger".format(target, variant)),
+        soc_label("{}_{}/drivers/soc/qcom/wcd_usbss_i2c".format(target, variant)),
 	    soc_label("{}_{}/drivers/soc/qcom/fsa4480_i2c".format(target, variant)),
-            soc_label("{}_{}/kernel/trace/qcom_ipc_logging".format(target, variant)),
-            soc_label("{}_{}/drivers/soc/qcom/socinfo".format(target, variant)),
-        ] + registry.hdrs,
-        "//build/qcom_build_extensions:qtisocrepo_false": ["//msm-kernel:all_headers"] + registry.hdrs,
-    })
-    kernel_build = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_{}_base_kernel".format(target, variant)),
-        "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}_{}".format(target, variant),
-    })
+        soc_label("{}_{}/kernel/trace/qcom_ipc_logging".format(target, variant)),
+        soc_label("{}_{}/drivers/soc/qcom/socinfo".format(target, variant)),
+    ] + registry.hdrs)
+    kernel_build = soc_label("{}_{}_base_kernel".format(target, variant))
 
     submodule_rules = []
     for module in enabled_modules:

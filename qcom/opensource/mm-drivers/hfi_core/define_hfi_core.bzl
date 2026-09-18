@@ -6,22 +6,14 @@ load("//vendor/qcom/sm8850-modules/qcom/opensource/mm-drivers:target_variants.bz
 def _define_module(target, variant):
     tv = "{}_{}".format(target, variant)
 
-    deps = select({
-        "//build/kernel/kleaf:socrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/firmware/qcom/qcom-scm".format(tv)),
-            soc_label("{}/drivers/soc/qcom/mdt_loader".format(tv)),
-            soc_label("{}/drivers/soc/qcom/smem".format(tv)),
-        ],
-        "//build/kernel/kleaf:socrepo_false": [
-            "//msm-kernel:all_headers",
-        ],
-    })
+    deps = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/firmware/qcom/qcom-scm".format(tv)),
+        soc_label("{}/drivers/soc/qcom/mdt_loader".format(tv)),
+        soc_label("{}/drivers/soc/qcom/smem".format(tv)),
+    ]
 
-    kernel_build = select({
-        "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(tv)),
-        "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(tv),
-    })
+    kernel_build = soc_label("{}_base_kernel".format(tv))
 
     if target in ["seraph"]:
         target_config = "seraph_defconfig"

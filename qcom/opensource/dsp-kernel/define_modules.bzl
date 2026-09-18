@@ -15,20 +15,14 @@ load(
 def define_modules(target, variant):
     kernel_build_variant = "{}_{}".format(target, variant)
 
-    kernel_build = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(kernel_build_variant)),
-        "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(kernel_build_variant),
-    })
-    ddk_deps = select({
-        "//build/qcom_build_extensions:qtisocrepo_true":[
-            soc_label("all_headers"),
-            soc_label("{}/drivers/firmware/qcom/qcom-scm".format(kernel_build_variant)),
-            soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(kernel_build_variant)),
-            soc_label("{}/drivers/soc/qcom/pdr_interface".format(kernel_build_variant)),
-            soc_label("{}/drivers/rpmsg/qcom_glink".format(kernel_build_variant)),
-        ],
-        "//build/qcom_build_extensions:qtisocrepo_false": ["//msm-kernel:all_headers"],
-    })
+    kernel_build = soc_label("{}_base_kernel".format(kernel_build_variant))
+    ddk_deps = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/firmware/qcom/qcom-scm".format(kernel_build_variant)),
+        soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(kernel_build_variant)),
+        soc_label("{}/drivers/soc/qcom/pdr_interface".format(kernel_build_variant)),
+        soc_label("{}/drivers/rpmsg/qcom_glink".format(kernel_build_variant)),
+    ]
 
     # Path to dsp folder from soc-repo/include/trace directory
     trace_include_path = "../../../{}/dsp".format(native.package_name())
@@ -71,20 +65,14 @@ def define_modules(target, variant):
 def define_vm_modules(target, variant):
     kernel_build_variant = "{}_{}".format(target, variant)
 
-    kernel_build = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(kernel_build_variant)),
-        "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(kernel_build_variant),
-    })
+    kernel_build = soc_label("{}_base_kernel".format(kernel_build_variant))
 
-    deps = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/firmware/qcom/qcom-scm".format(kernel_build_variant)),
-            soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(kernel_build_variant)),
-            soc_label("{}/drivers/dma-buf/heaps/qcom_dma_heaps".format(kernel_build_variant)),
-            ] ,
-        "//build/qcom_build_extensions:qtisocrepo_false": ["//msm-kernel:all_headers"],
-    })
+    deps = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/firmware/qcom/qcom-scm".format(kernel_build_variant)),
+        soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(kernel_build_variant)),
+        soc_label("{}/drivers/dma-buf/heaps/qcom_dma_heaps".format(kernel_build_variant)),
+        ]
 
     # Path to dsp folder from soc-repo/include/trace directory
     trace_include_path = "../../../{}/dsp".format(native.package_name())

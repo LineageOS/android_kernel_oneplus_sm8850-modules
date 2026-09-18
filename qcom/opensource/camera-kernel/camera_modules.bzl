@@ -9,36 +9,26 @@ def _define_module(target, variant):
     tv = "{}_{}".format(target, variant)
     base_deps = []
     deps = []
-    base_deps = select({
-        "//build/kernel/kleaf:socrepo_true": [
-            ":camera_headers",
-            ":camera_banner",
-            soc_label("all_headers"),
-            soc_label("{}/drivers/firmware/qcom/qcom-scm".format(tv)),
-            soc_label("{}/drivers/iommu/qcom_iommu_util".format(tv)),
-            soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(tv)),
-            soc_label("{}/drivers/soc/qcom/crm-v2".format(tv)),
-            soc_label("{}/drivers/clk/qcom/clk-qcom".format(tv)),
-            soc_label("{}/drivers/soc/qcom/qcom_rpmh".format(tv)),
-            soc_label("{}/drivers/soc/qcom/socinfo".format(tv)),
-            soc_label("{}/drivers/soc/qcom/llcc-qcom".format(tv)),
-            soc_label("{}/drivers/soc/qcom/mdt_loader".format(tv)),
-            soc_label("{}/drivers/leds/flash/leds-qcom-flash".format(tv)),
-            soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(tv)),
-            soc_label("{}/drivers/leds/leds-qti-flash".format(tv)),
-            soc_label("{}/drivers/video/backlight/qcom-spmi-wled".format(tv)),
-        ],
-        "//build/kernel/kleaf:socrepo_false": [
-            ":camera_headers",
-            ":camera_banner",
-            "//msm-kernel:all_headers",
-        ],
-    })
+    base_deps = [
+        ":camera_headers",
+        ":camera_banner",
+        soc_label("all_headers"),
+        soc_label("{}/drivers/firmware/qcom/qcom-scm".format(tv)),
+        soc_label("{}/drivers/iommu/qcom_iommu_util".format(tv)),
+        soc_label("{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(tv)),
+        soc_label("{}/drivers/soc/qcom/crm-v2".format(tv)),
+        soc_label("{}/drivers/clk/qcom/clk-qcom".format(tv)),
+        soc_label("{}/drivers/soc/qcom/qcom_rpmh".format(tv)),
+        soc_label("{}/drivers/soc/qcom/socinfo".format(tv)),
+        soc_label("{}/drivers/soc/qcom/llcc-qcom".format(tv)),
+        soc_label("{}/drivers/soc/qcom/mdt_loader".format(tv)),
+        soc_label("{}/drivers/leds/flash/leds-qcom-flash".format(tv)),
+        soc_label("{}/drivers/soc/qcom/qcom_va_minidump".format(tv)),
+        soc_label("{}/drivers/leds/leds-qti-flash".format(tv)),
+        soc_label("{}/drivers/video/backlight/qcom-spmi-wled".format(tv)),
+    ]
 
-    kernel_build = select({
-        "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel".format(tv)),
-        "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(tv),
-    })
+    kernel_build = soc_label("{}_base_kernel".format(tv))
 
     # Generate the defconfig file dynamically
     native.genrule(

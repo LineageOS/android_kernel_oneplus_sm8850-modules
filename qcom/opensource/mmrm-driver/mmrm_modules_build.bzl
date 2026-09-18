@@ -40,19 +40,11 @@ def mmrm_driver_modules_entry(hdrs = []):
 
 def define_target_variant_modules(target, variant, registry, modules, config_options = []):
     kernel_build = "{}_{}".format(target, variant)
-    deps = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": [
-            soc_label("all_headers"),
-            soc_label("{}/drivers/clk/qcom/clk-qcom".format(kernel_build)),
-        ],
-        "//build/qcom_build_extensions:qtisocrepo_false": [
-            "//msm-kernel:all_headers",
-        ],
-    })
-    kernel_build_label = select({
-        "//build/qcom_build_extensions:qtisocrepo_true": soc_label("{}_base_kernel".format(kernel_build)),
-        "//build/qcom_build_extensions:qtisocrepo_false": "//msm-kernel:{}".format(kernel_build),
-    })
+    deps = [
+        soc_label("all_headers"),
+        soc_label("{}/drivers/clk/qcom/clk-qcom".format(kernel_build)),
+    ]
+    kernel_build_label = soc_label("{}_base_kernel".format(kernel_build))
 
     modules = [registry.get(module_name) for module_name in modules]
     options = _get_kernel_build_options(modules, config_options)
