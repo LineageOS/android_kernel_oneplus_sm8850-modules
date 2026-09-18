@@ -27,6 +27,7 @@ def define_aps(target, variant):
         ],
         copts = ["-Wno-misleading-indentation"],
         includes = ["include"],
+        visibility = [soc_label("__pkg__")],
     )
 
     copy_to_dist_dir(

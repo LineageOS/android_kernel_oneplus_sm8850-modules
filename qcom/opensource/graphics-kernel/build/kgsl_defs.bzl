@@ -192,7 +192,7 @@ def define_target_variant_module(target, variant):
         deps = ddk_deps + ext_deps,
         includes = ["include", "."],
         kernel_build = kernel_build,
-        visibility = ["//visibility:private"]
+        visibility = [soc_label("__pkg__")]
     )
 
     copy_to_dist_dir(

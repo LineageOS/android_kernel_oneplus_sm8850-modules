@@ -22,6 +22,7 @@ def define_perf_tether(target, variant):
             modules_label("qcom/opensource/datarmnet:rmnet_core_headers"),
         ],
         copts = ["-Wno-misleading-indentation"],
+        visibility = [soc_label("__pkg__")],
     )
 
     copy_to_dist_dir(

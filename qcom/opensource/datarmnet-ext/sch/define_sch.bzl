@@ -19,6 +19,7 @@ def define_sch(target, variant):
         deps = deps_sch,
         copts = ["-Wno-misleading-indentation"],
         kernel_build = kernel_build,
+        visibility = [soc_label("__pkg__")],
     )
 
     copy_to_dist_dir(
