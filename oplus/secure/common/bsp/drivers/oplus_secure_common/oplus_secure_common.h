@@ -1,5 +1,5 @@
 /************************************************************************************
-** File: - vendor/oplus/secure/common/bsp$ vim drivers/include/oplus_secure_common.h
+** File: - vendor/oneplus/sm8850-modules/oplus/secure/common/bsp$ vim drivers/include/oplus_secure_common.h
 **
 ** Copyright (C), 2008-2016, OPLUS Mobile Comm Corp., Ltd
 **
