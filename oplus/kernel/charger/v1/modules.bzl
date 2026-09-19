@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/kernel/kleaf:hermetic_tools.bzl", "hermetic_genrule")
 load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module",
@@ -12,27 +13,27 @@ load(":kleaf-scripts/filter_target.bzl", "filter_deps_map")
 conditional_ko_deps = {
     "CONFIG_OPLUS_ADSP_CHARGER": {
         True: [
-            "//soc-repo:{target_variant}/drivers/soc/qcom/panel_event_notifier",
-            "//soc-repo:{target_variant}/drivers/soc/qcom/qti_pmic_glink",
-            "//soc-repo:{target_variant}/drivers/soc/qcom/pdr_interface",
-            "//soc-repo:{target_variant}/drivers/soc/qcom/qmi_helpers",
-            "//soc-repo:{target_variant}/drivers/remoteproc/rproc_qcom_common",
-            "//soc-repo:{target_variant}/drivers/rpmsg/qcom_smd",
-            "//soc-repo:{target_variant}/drivers/rpmsg/qcom_glink_smem",
-            "//soc-repo:{target_variant}/drivers/rpmsg/qcom_glink",
-            "//soc-repo:{target_variant}/kernel/trace/qcom_ipc_logging",
-            "//soc-repo:{target_variant}/drivers/soc/qcom/minidump",
-            "//soc-repo:{target_variant}/drivers/soc/qcom/smem",
-            "//soc-repo:{target_variant}/drivers/soc/qcom/debug_symbol",
-            "//soc-repo:{target_variant}/drivers/dma-buf/heaps/qcom_dma_heaps",
-            "//soc-repo:{target_variant}/drivers/iommu/msm_dma_iommu_mapping",
-            "//soc-repo:{target_variant}/drivers/soc/qcom/mem_buf/mem_buf_dev",
-            "//soc-repo:{target_variant}/drivers/soc/qcom/secure_buffer",
-            "//soc-repo:{target_variant}/drivers/firmware/qcom/qcom-scm",
-            "//soc-repo:{target_variant}/drivers/virt/gunyah/gh_rm_drv",
-            "//soc-repo:{target_variant}/drivers/virt/gunyah/gh_msgq",
-            "//soc-repo:{target_variant}/drivers/virt/gunyah/gh_dbl",
-            "//soc-repo:{target_variant}/arch/arm64/gunyah/gh_arm_drv",
+            soc_label("{target_variant}/drivers/soc/qcom/panel_event_notifier"),
+            soc_label("{target_variant}/drivers/soc/qcom/qti_pmic_glink"),
+            soc_label("{target_variant}/drivers/soc/qcom/pdr_interface"),
+            soc_label("{target_variant}/drivers/soc/qcom/qmi_helpers"),
+            soc_label("{target_variant}/drivers/remoteproc/rproc_qcom_common"),
+            soc_label("{target_variant}/drivers/rpmsg/qcom_smd"),
+            soc_label("{target_variant}/drivers/rpmsg/qcom_glink_smem"),
+            soc_label("{target_variant}/drivers/rpmsg/qcom_glink"),
+            soc_label("{target_variant}/kernel/trace/qcom_ipc_logging"),
+            soc_label("{target_variant}/drivers/soc/qcom/minidump"),
+            soc_label("{target_variant}/drivers/soc/qcom/smem"),
+            soc_label("{target_variant}/drivers/soc/qcom/debug_symbol"),
+            soc_label("{target_variant}/drivers/dma-buf/heaps/qcom_dma_heaps"),
+            soc_label("{target_variant}/drivers/iommu/msm_dma_iommu_mapping"),
+            soc_label("{target_variant}/drivers/soc/qcom/mem_buf/mem_buf_dev"),
+            soc_label("{target_variant}/drivers/soc/qcom/secure_buffer"),
+            soc_label("{target_variant}/drivers/firmware/qcom/qcom-scm"),
+            soc_label("{target_variant}/drivers/virt/gunyah/gh_rm_drv"),
+            soc_label("{target_variant}/drivers/virt/gunyah/gh_msgq"),
+            soc_label("{target_variant}/drivers/virt/gunyah/gh_dbl"),
+            soc_label("{target_variant}/arch/arm64/gunyah/gh_arm_drv"),
         ],
     },
     "CONFIG_OPLUS_CHARGER_MTK": {
@@ -95,10 +96,10 @@ conditional_ko_deps = {
     },
     "CONFIG_DISABLE_OPLUS_FUNCTION": {
         False: [
-            "//vendor/oplus/kernel/device_info/device_info/bazel:device_info",
-            "//vendor/oplus/kernel/boot:oplus_bsp_bootmode",
-            "//vendor/oplus/kernel/boot:oplus_bsp_boot_projectinfo",
-            "//vendor/oplus/kernel/touchpanel/kernelFwUpdate/bazel:oplus_bsp_fw_update",
+            modules_label("oplus/kernel/device_info/device_info/bazel:device_info"),
+            modules_label("oplus/kernel/boot:oplus_bsp_bootmode"),
+            modules_label("oplus/kernel/boot:oplus_bsp_boot_projectinfo"),
+            modules_label("oplus/kernel/touchpanel/kernelFwUpdate/bazel:oplus_bsp_fw_update"),
         ],
     },
 }
@@ -121,7 +122,7 @@ conditional_hdr_deps = {
     },
     "CONFIG_DISABLE_OPLUS_FUNCTION": {
         False: [
-            "//vendor/oplus/kernel/touchpanel/kernelFwUpdate/bazel:oplus_bsp_fw_update_headers",
+            modules_label("oplus/kernel/touchpanel/kernelFwUpdate/bazel:oplus_bsp_fw_update_headers"),
         ],
     },
 }

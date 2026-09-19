@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
 load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load(":target_variants.bzl", "get_all_variants")
@@ -6,12 +7,12 @@ def _define_module(target, variant):
     tv = "{}_{}".format(target, variant)
 
     kernel_build = select({
-        "//build/kernel/kleaf:socrepo_true": "//soc-repo:{}_base_kernel".format(tv),
+        "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel").format(tv),
         "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(tv),
     })
 
     deps_load = select({
-        "//build/kernel/kleaf:socrepo_true": ["//soc-repo:all_headers"],
+        "//build/kernel/kleaf:socrepo_true": [soc_label("all_headers")],
         "//build/kernel/kleaf:socrepo_false": ["//msm-kernel:all_headers"],
     })
 
@@ -52,9 +53,9 @@ def _define_module(target, variant):
         ]),
         local_defines = ["OPLUS_FEATURE_CAMERA_COMMON", "FEATURE_ENABLE=1"],
         deps  = deps_load + [
-             "//vendor/qcom/opensource/camera-kernel:camera_headers",
-             "//vendor/qcom/opensource/camera-kernel:camera_banner",
-             "//vendor/qcom/opensource/camera-kernel:{}_camera".format(tv),
+             modules_label("qcom/opensource/camera-kernel:camera_headers"),
+             modules_label("qcom/opensource/camera-kernel:camera_banner"),
+             modules_label("qcom/opensource/camera-kernel:{}_camera").format(tv),
              ":camera_extension_headers",
         ],
 

@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_kernel_version", "oplus_ddk_get_target", "oplus_ddk_get_variant", "bazel_support_platform")
 load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
@@ -18,19 +19,19 @@ def define_oplus_local_modules():
     if bazel_support_platform == "qcom" :
         panel_event_notifier_ko_deps = select({
             "//build/kernel/kleaf:socrepo_true": [
-                "//soc-repo:{}/drivers/soc/qcom/panel_event_notifier".format(kernel_build_variant),
+                soc_label("{}/drivers/soc/qcom/panel_event_notifier").format(kernel_build_variant),
             ],
             "//build/kernel/kleaf:socrepo_false": [],
         })
         tp_others_ko_deps = select({
             "//build/kernel/kleaf:socrepo_true": [
-                "//vendor/oplus/kernel/touchpanel/touchpanel_notify/bazel:oplus_bsp_tp_notify",
-                "//vendor/oplus/kernel/touchpanel/kernelFwUpdate/bazel:oplus_bsp_fw_update",
+                modules_label("oplus/kernel/touchpanel/touchpanel_notify/bazel:oplus_bsp_tp_notify"),
+                modules_label("oplus/kernel/touchpanel/kernelFwUpdate/bazel:oplus_bsp_fw_update"),
             ],
             "//build/kernel/kleaf:socrepo_false": [],
         })
         ko_deps = [
-                "//vendor/oplus/kernel/tp/hbp/hbp:oplus_hbp_core",
+                modules_label("oplus/kernel/tp/hbp/hbp:oplus_hbp_core"),
         ]
         copts = []
     else :
@@ -48,7 +49,7 @@ def define_oplus_local_modules():
                 "//kernel_device_modules-{}/drivers/base/kernelFwUpdate:oplus_bsp_fw_update".format(kernel_version),
             ]
             ko_deps = [
-                "//vendor/oplus/kernel/tp/hbp/hbp:oplus_hbp_core",
+                modules_label("oplus/kernel/tp/hbp/hbp:oplus_hbp_core"),
             ]
             copts = [
                 "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
@@ -58,7 +59,7 @@ def define_oplus_local_modules():
             panel_event_notifier_ko_deps = []
             tp_others_ko_deps = []
             ko_deps = [
-                "//vendor/oplus/kernel/tp/hbp/hbp:oplus_hbp_core",
+                modules_label("oplus/kernel/tp/hbp/hbp:oplus_hbp_core"),
             ]
             copts = []
 
@@ -100,7 +101,7 @@ def define_oplus_local_modules():
         ]),
         includes = ["."],
         ko_deps = [
-            "//vendor/oplus/kernel/tp/hbp/hbp:oplus_hbp_core",
+            modules_label("oplus/kernel/tp/hbp/hbp:oplus_hbp_core"),
         ],
         local_defines = [
                  "BUILD_BY_BAZEL",
@@ -146,7 +147,7 @@ def define_oplus_local_modules():
         ]),
         includes = ["."],
         ko_deps = [
-            "//vendor/oplus/kernel/tp/hbp/hbp:oplus_hbp_core",
+            modules_label("oplus/kernel/tp/hbp/hbp:oplus_hbp_core"),
         ],
         local_defines = [
             "BUILD_BY_BAZEL",

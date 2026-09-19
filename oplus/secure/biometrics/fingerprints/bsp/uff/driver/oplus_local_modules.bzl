@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_kernel_version", "oplus_ddk_get_target", "oplus_ddk_get_variant", "bazel_support_platform")
 load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
@@ -29,8 +30,8 @@ def define_oplus_local_modules():
     else :
         oplus_fp_ko_deps =select({
                 "//build/kernel/kleaf:socrepo_true": [
-                    "//vendor/oplus/kernel/touchpanel/touchpanel_notify/bazel:oplus_bsp_tp_notify",
-                    "//soc-repo:{}/drivers/soc/qcom/panel_event_notifier".format(kernel_build_variant),
+                    modules_label("oplus/kernel/touchpanel/touchpanel_notify/bazel:oplus_bsp_tp_notify"),
+                    soc_label("{}/drivers/soc/qcom/panel_event_notifier").format(kernel_build_variant),
                 ],
                 "//build/kernel/kleaf:socrepo_false": [],
             })
@@ -57,7 +58,7 @@ def define_oplus_local_modules():
         },
         local_defines = ["CONFIG_OPLUS_FINGERPRINT_GKI_ENABLE","CONFIG_TOUCHPANEL_NOTIFY"],
         header_deps = [
-            "//vendor/oplus/kernel/touchpanel/oplus_touchscreen_v2:config_headers",
+            modules_label("oplus/kernel/touchpanel/oplus_touchscreen_v2:config_headers"),
         ],
     )
 

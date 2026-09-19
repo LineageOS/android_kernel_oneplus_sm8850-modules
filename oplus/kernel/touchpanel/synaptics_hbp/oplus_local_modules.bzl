@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_kernel_version", "oplus_ddk_get_target", "oplus_ddk_get_variant", "bazel_support_platform")
 load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
@@ -16,19 +17,19 @@ def define_oplus_local_modules():
 
     if bazel_support_target == "canoe" :
         oplusboot_ko_deps = [
-            "//vendor/oplus/kernel/boot:oplusboot",
-            "//vendor/oplus/kernel/boot:oplus_bsp_bootmode",
+            modules_label("oplus/kernel/boot:oplusboot"),
+            modules_label("oplus/kernel/boot:oplus_bsp_bootmode"),
         ]
         oplus_bsp_boot_projectinfo_ko_deps = [
-            "//vendor/oplus/kernel/boot:oplus_bsp_boot_projectinfo",
+            modules_label("oplus/kernel/boot:oplus_bsp_boot_projectinfo"),
         ]
         panel_event_notifier_ko_deps = [
-            "//soc-repo:{}/drivers/soc/qcom/panel_event_notifier".format(kernel_build_variant),
+            soc_label("{}/drivers/soc/qcom/panel_event_notifier").format(kernel_build_variant),
         ]
         tp_others_ko_deps = [
-            "//vendor/oplus/kernel/device_info/device_info/bazel:device_info",
-            "//vendor/oplus/kernel/touchpanel/touchpanel_notify/bazel:oplus_bsp_tp_notify",
-            "//vendor/oplus/kernel/touchpanel/kernelFwUpdate/bazel:oplus_bsp_fw_update",
+            modules_label("oplus/kernel/device_info/device_info/bazel:device_info"),
+            modules_label("oplus/kernel/touchpanel/touchpanel_notify/bazel:oplus_bsp_tp_notify"),
+            modules_label("oplus/kernel/touchpanel/kernelFwUpdate/bazel:oplus_bsp_fw_update"),
         ]
     else :
         oplusboot_ko_deps = []
@@ -38,13 +39,13 @@ def define_oplus_local_modules():
 
     if bazel_support_platform == "qcom" :
         ko_deps = [
-            "//vendor/oplus/kernel/touchpanel/oplus_touchscreen_v2:oplus_bsp_tp_custom",
+            modules_label("oplus/kernel/touchpanel/oplus_touchscreen_v2:oplus_bsp_tp_custom"),
         ]
         copts = []
     else :
         if version_compare(kernel_version, "6.12") :
             ko_deps = [
-                "//vendor/oplus/kernel/touchpanel/oplus_touchscreen_v2:oplus_bsp_tp_custom",
+                modules_label("oplus/kernel/touchpanel/oplus_touchscreen_v2:oplus_bsp_tp_custom"),
                 "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
                 "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
                 "//kernel_device_modules-{}/drivers/soc/oplus/boot:oplus_bsp_boot_projectinfo".format(kernel_version),
@@ -60,7 +61,7 @@ def define_oplus_local_modules():
             ]
         else :
             ko_deps = [
-                "//vendor/oplus/kernel/touchpanel/oplus_touchscreen_v2:oplus_bsp_tp_custom",
+                modules_label("oplus/kernel/touchpanel/oplus_touchscreen_v2:oplus_bsp_tp_custom"),
             ]
             copts = []
 
@@ -99,7 +100,7 @@ def define_oplus_local_modules():
             "qcom":  ["CONFIG_QCOM_PANEL_EVENT_NOTIFIER"],
         },
         header_deps = [
-            "//vendor/oplus/kernel/touchpanel/oplus_touchscreen_v2:config_headers",
+            modules_label("oplus/kernel/touchpanel/oplus_touchscreen_v2:config_headers"),
         ],
     )
 

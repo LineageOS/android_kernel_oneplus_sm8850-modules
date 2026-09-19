@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_kernel_version", "oplus_ddk_get_target", "oplus_ddk_get_variant", "bazel_support_platform")
 load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
@@ -21,7 +22,7 @@ def define_oplus_local_modules():
         ]),
         includes = ["."],
         ko_deps = [
-            "//vendor/oplus/kernel/nfc:oplus_network_nfc_i2c",
+            modules_label("oplus/kernel/nfc:oplus_network_nfc_i2c"),
         ],
     )
     define_oplus_ddk_module(
@@ -43,8 +44,8 @@ def define_oplus_local_modules():
             ]
         else :
             ko_deps = [
-                     "//vendor/oplus/kernel/boot:oplus_bsp_bootmode",
-                     "//soc-repo:{}/drivers/pinctrl/qcom/pinctrl-msm".format(tv),
+                     modules_label("oplus/kernel/boot:oplus_bsp_bootmode"),
+                     soc_label("{}/drivers/pinctrl/qcom/pinctrl-msm").format(tv),
             ]
     else :
        ko_deps = []
@@ -68,7 +69,7 @@ def define_oplus_local_modules():
             ]
         else :
             ko_deps_oplus_nfc = [
-                     "//vendor/oplus/kernel/boot:oplus_bsp_boot_projectinfo",
+                     modules_label("oplus/kernel/boot:oplus_bsp_boot_projectinfo"),
             ]
     else :
        ko_deps_oplus_nfc = []

@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "modules_label", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_target", "oplus_ddk_get_variant")
 load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
@@ -10,7 +11,7 @@ def define_oplus_local_modules():
 
     if target == "canoe" :
         ko_oem_qmi_deps = [
-            "//soc-repo:{}/drivers/soc/qcom/qmi_helpers".format(kernel_build_variant)
+            soc_label("{}/drivers/soc/qcom/qmi_helpers").format(kernel_build_variant)
         ]
     else :
         ko_oem_qmi_deps = []
@@ -47,7 +48,7 @@ def define_oplus_local_modules():
             "oplus_network_esim/oplus_network_esim.c",
         ]),
         ko_deps = [
-            "//vendor/oplus/kernel/network:oplus_network_oem_qmi",
+            modules_label("oplus/kernel/network:oplus_network_oem_qmi"),
         ],
         conditional_defines = {
             "qcom":  ["QCOM_PLATFORM"],
@@ -62,7 +63,7 @@ def define_oplus_local_modules():
             "oplus_network_sim_detect/sim_detect.c",
         ]),
         ko_deps = [
-            "//vendor/oplus/kernel/network:oplus_network_oem_qmi",
+            modules_label("oplus/kernel/network:oplus_network_oem_qmi"),
         ],
         conditional_defines = {
             "qcom":  ["QCOM_PLATFORM"],

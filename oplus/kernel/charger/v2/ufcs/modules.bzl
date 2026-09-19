@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "soc_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/kernel/oplus:oplus_modules_define.bzl",
     "define_oplus_ddk_module", "oplus_ddk_get_kernel_version",
@@ -16,7 +17,7 @@ def define_ufcs_class_module():
         kconfig = None
         defconfig = None
         if version_compare(kernel_version, "6.12") :
-            ddk_config = "//soc-repo:{}_config".format(target)
+            ddk_config = soc_label("{}_config").format(target)
     else:
         kconfig = ":kconfig.oplus_chg.generated"
         defconfig = ":oplus_chg_{}_defconfig".format(target)

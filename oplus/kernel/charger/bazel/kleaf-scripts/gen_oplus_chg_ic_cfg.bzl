@@ -1,7 +1,8 @@
+load(":repo_paths.bzl", "modules_label")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:sets.bzl", "sets")
 
-visibility("//vendor/oplus/kernel/charger/bazel/...")
+visibility(modules_label("oplus/kernel/charger/bazel/..."))
 
 def _gen_oplus_chg_ic_cfg_impl(ctx):
     #output_path = ctx.actions.declare_directory("{}".format(ctx.attr.name))

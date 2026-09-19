@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "soc_label")
 load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_kernel_version", "oplus_ddk_get_target", "oplus_ddk_get_variant", "bazel_support_platform")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
@@ -20,7 +21,7 @@ def define_oplus_local_modules():
         olc_defconfig = None
         kfb_defconfig = None
         if version_compare(kernel_version, "6.12"):
-            ddk_config = "//soc-repo:{}_config".format(kernel_build_variant)
+            ddk_config = soc_label("{}_config").format(kernel_build_variant)
     else :
         olc_kconfig = "common/olc/Kconfig"
         kfb_kconfig = "common/feedback/Kconfig"

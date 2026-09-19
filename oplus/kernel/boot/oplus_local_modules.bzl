@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "soc_label")
 
 load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_target", "oplus_ddk_get_variant", "bazel_support_platform")
 load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
@@ -80,7 +81,7 @@ def define_oplus_local_modules():
         ko_deps = [
                 ":buildvariant",
                 ":oplusboot",
-                "//soc-repo:{}/drivers/soc/qcom/smem".format(kernel_build_variant),
+                soc_label("{}/drivers/soc/qcom/smem").format(kernel_build_variant),
         ]
         copts = ["-DCONFIG_QCOM_SMEM"]
     else :

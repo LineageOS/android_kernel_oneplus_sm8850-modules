@@ -1,3 +1,4 @@
+load(":repo_paths.bzl", "modules_label")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/kernel/oplus:oplus_modules_define.bzl", "define_oplus_ddk_module", "oplus_ddk_get_kernel_version", "oplus_ddk_get_target", "oplus_ddk_get_variant", "bazel_support_platform")
 load("//build/kernel/oplus:oplus_modules_dist.bzl", "ddk_copy_to_dist_dir")
@@ -16,7 +17,7 @@ def define_oplus_local_modules():
 
     if bazel_support_target == "canoe" :
         others_ko_deps = [
-            "//vendor/oplus/kernel/device_info/magtransfer:oplus_magcvr_notify",
+            modules_label("oplus/kernel/device_info/magtransfer:oplus_magcvr_notify"),
         ]
     else :
         others_ko_deps = []
@@ -60,7 +61,7 @@ def define_oplus_local_modules():
             "magcvr_src/hardware/magcvr_ak09973.c"
         ]),
         ko_deps = [
-            "//vendor/oplus/kernel/device_info/magnetic_cover:oplus_magnetic_cover",
+            modules_label("oplus/kernel/device_info/magnetic_cover:oplus_magnetic_cover"),
         ],
         includes = ["."],
     )
@@ -72,7 +73,7 @@ def define_oplus_local_modules():
             "magcvr_src/hardware/magcvr_mxm1120.c"
         ]),
         ko_deps = [
-            "//vendor/oplus/kernel/device_info/magnetic_cover:oplus_magnetic_cover",
+            modules_label("oplus/kernel/device_info/magnetic_cover:oplus_magnetic_cover"),
         ],
         includes = ["."],
     )
@@ -84,7 +85,7 @@ def define_oplus_local_modules():
             "magcvr_src/hardware/magcvr_mkh100a.c"
         ]),
         ko_deps = [
-            "//vendor/oplus/kernel/device_info/magnetic_cover:oplus_magnetic_cover",
+            modules_label("oplus/kernel/device_info/magnetic_cover:oplus_magnetic_cover"),
         ],
         includes = ["."],
     )
