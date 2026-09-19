@@ -243,6 +243,7 @@ audio_modules.register(
             ":%b_oplus_audio_extend",
             ":%b_oplus_audio_daemon",
             ":%b_adsp_loader_dlkm",
+            ":%b_oplus_typec_switch_i2c",
 	],
 )
 # >>>> ASOC/CODEC MODULES <<<<

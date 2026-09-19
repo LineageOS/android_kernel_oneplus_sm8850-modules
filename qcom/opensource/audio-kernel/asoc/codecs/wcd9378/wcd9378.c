@@ -43,6 +43,7 @@
 #undef pr_err
 #define pr_err pr_err_fb_delay
 #endif
+#define ERR_CNT 10
 #endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 #define NUM_SWRS_DT_PARAMS 5
@@ -4734,15 +4735,40 @@ static int wcd9378_reset(struct device *dev)
 	}
 
 	value = msm_cdc_pinctrl_get_state(wcd9378->rst_np);
+#ifdef OPLUS_ARCH_EXTENDS
+/* add log for wcd reset */
+	if (value > 0) {
+		dev_info(dev, "%s: msm_cdc_pinctrl_get_state failed, result: %d \n",
+				__func__, value);
+		return 0;
+	}
+
+	dev_info(dev, "%s: starting wcd9378_reset \n",
+				__func__);
+#else
 	if (value > 0)
 		return 0;
-
+#endif
 	rc = msm_cdc_pinctrl_select_sleep_state(wcd9378->rst_np);
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+	if (rc) {
+		if (wcd9378->mbhc == NULL) {
+			dev_err_not_fb(dev, "%s: wcd sleep state request fail! rc:%d\n",
+					__func__, rc);
+		} else {
+			dev_err(dev, "%s: wcd sleep state request fail!\n",
+					__func__);
+		}
+		return -EPROBE_DEFER;
+	}
+#else /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 	if (rc) {
 		dev_err(dev, "%s: wcd sleep state request fail!\n",
 				__func__);
 		return -EPROBE_DEFER;
 	}
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
 	/* 20us sleep required after pulling the reset gpio to LOW */
 	usleep_range(80, 85);
 
@@ -4834,7 +4860,11 @@ static int wcd9378_reset_low(struct device *dev)
 				__func__);
 		return -EINVAL;
 	}
-
+#ifdef OPLUS_ARCH_EXTENDS
+/* add log for wcd reset */
+	dev_info(dev, "%s: starting wcd9378_reset_low \n",
+				__func__);
+#endif
 	rc = msm_cdc_pinctrl_select_sleep_state(wcd9378->rst_np);
 	if (rc) {
 		dev_err(dev, "%s: wcd sleep state request fail!\n",
@@ -5178,10 +5208,18 @@ static int wcd9378_probe(struct platform_device *pdev)
 		goto err_lock_init;
 
 	ret = wcd9378_reset(dev);
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+	dev_err_count_ratelimited_fb_delay(ret, ERR_CNT, dev, "%s: wcd reset failed!\n", __func__);
+	if (ret == -EPROBE_DEFER) {
+		dev_err_not_fb(dev, "%s: wcd reset failed!\n", __func__);
+		goto err_lock_init;
+	}
+#else /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 	if (ret == -EPROBE_DEFER) {
 		dev_err(dev, "%s: wcd reset failed!\n", __func__);
 		goto err_lock_init;
 	}
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 	wcd9378->wakeup = wcd9378_wakeup;
 

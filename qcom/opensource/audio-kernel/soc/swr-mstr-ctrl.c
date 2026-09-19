@@ -32,6 +32,8 @@
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
 #include "feedback/oplus_audio_kernel_fb.h"
+#define ERR_CNT 2
+#define SWR_UNDERFLOW_TIME_MS 300
 #endif
 
 #define SWR_NUM_PORTS    4 /* TODO - Get this info from DT */
@@ -1068,10 +1070,13 @@ static void swrm_wait_for_fifo_avail(struct swr_mstr_ctrl *swrm, int swrm_rd_wr)
 			}
 		}
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
-		if ((fifo_outstanding_cmd == 0) && strncmp(dev_name(swrm->dev), "bt_swr_mstr", sizeof("bt_swr_mstr"))) {
-			dev_err_ratelimited(swrm->dev,
-					"%s err read underflow\n", __func__);
-			ratelimited_fb("payload@@%s %s:err read underflow", dev_driver_string(swrm->dev), dev_name(swrm->dev));
+		if (strncmp(dev_name(swrm->dev), "bt_swr_mstr", sizeof("bt_swr_mstr"))) {
+			int is_err = (fifo_outstanding_cmd == 0) ? -1 : 0;
+			if (is_err)
+				dev_err_ratelimited(swrm->dev, "%s err read underflow\n", __func__);
+			ratelimited_count_limit_fb(is_err, ERR_CNT, SWR_UNDERFLOW_TIME_MS,
+					"payload@@%s %s:%s err read underflow",
+					dev_driver_string(swrm->dev), dev_name(swrm->dev), __func__);
 		}
 #else /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 		if (fifo_outstanding_cmd == 0)

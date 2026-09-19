@@ -20,6 +20,9 @@
 #include <linux/soc/qcom/wcd939x-i2c.h>
 #endif
 #include <linux/soc/qcom/fsa4480-i2c.h>
+#if IS_ENABLED(CONFIG_OPLUS_TYPEC_SWITCH_I2C)
+#include "oplus_typec_switch_i2c.h"
+#endif
 #include <linux/pm_qos.h>
 #include <sound/control.h>
 #include <sound/core.h>
@@ -135,6 +138,9 @@ struct msm_asoc_mach_data {
 	bool is_afe_config_done;
 	struct device_node *fsa_handle;
 	struct device_node *wcd_usbss_handle;
+#if IS_ENABLED(CONFIG_OPLUS_TYPEC_SWITCH_I2C)
+	struct device_node *oplus_switch_handle;
+#endif
 	struct clk *lpass_audio_hw_vote;
 	int core_audio_vote_count;
 	u32 wsa_max_devs;
@@ -210,11 +216,15 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 
 static bool msm_usbc_swap_gnd_mic(struct snd_soc_component *component, bool active)
 {
-	int ret = 0;
+	int ret = -ENODEV;
 	struct snd_soc_card *card = component->card;
-	struct msm_asoc_mach_data *pdata =
-				snd_soc_card_get_drvdata(card);
+	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 
+#if IS_ENABLED(CONFIG_OPLUS_TYPEC_SWITCH_I2C)
+	if (pdata->oplus_switch_handle)
+		return typec_switch_switch_event(pdata->oplus_switch_handle,
+			TYPEC_SWITCH_MIC_GND_SWAP) == 0;
+#endif
 	if (!pdata->wcd_usbss_handle && !pdata->fsa_handle)
 		return false;
 
@@ -222,18 +232,15 @@ static bool msm_usbc_swap_gnd_mic(struct snd_soc_component *component, bool acti
 		ret = fsa4480_switch_event(pdata->fsa_handle, FSA_MIC_GND_SWAP);
 	} else {
 #if IS_ENABLED(CONFIG_QCOM_WCD_USBSS_I2C)
-	if (wcd_mbhc_cfg.usbss_hsj_connect_enable)
-		ret = wcd_usbss_switch_update(WCD_USBSS_GND_MIC_SWAP_HSJ,
-							WCD_USBSS_CABLE_CONNECT);
-	else if (wcd_mbhc_cfg.enable_usbc_analog)
-		ret = wcd_usbss_switch_update(WCD_USBSS_GND_MIC_SWAP_AATC,
-							WCD_USBSS_CABLE_CONNECT);
-	}
+		if (wcd_mbhc_cfg.usbss_hsj_connect_enable)
+			ret = wcd_usbss_switch_update(WCD_USBSS_GND_MIC_SWAP_HSJ,
+				WCD_USBSS_CABLE_CONNECT);
+		else if (wcd_mbhc_cfg.enable_usbc_analog)
+			ret = wcd_usbss_switch_update(WCD_USBSS_GND_MIC_SWAP_AATC,
+				WCD_USBSS_CABLE_CONNECT);
 #endif
-	if (ret == 0)
-		return true;
-	else
-		return false;
+	}
+	return ret == 0;
 }
 
 static void msm_parse_upd_configuration(struct platform_device *pdev,
@@ -3237,6 +3244,12 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "property %s not detected in node %s\n",
 			"wcd939x-i2c-handle", pdev->dev.of_node->full_name);
 
+#if IS_ENABLED(CONFIG_OPLUS_TYPEC_SWITCH_I2C)
+	pdata->oplus_switch_handle = of_parse_phandle(pdev->dev.of_node,
+		"oplus-switch-handle", 0);
+	if (pdata->oplus_switch_handle)
+		wcd_mbhc_cfg.swap_gnd_mic = msm_usbc_swap_gnd_mic;
+#endif
 	if ((pdata->wcd_usbss_handle) || (pdata->fsa_handle))
 		wcd_mbhc_cfg.swap_gnd_mic = msm_usbc_swap_gnd_mic;
 
