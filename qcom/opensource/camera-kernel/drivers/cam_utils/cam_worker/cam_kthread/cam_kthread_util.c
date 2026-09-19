@@ -423,6 +423,25 @@ int cam_kthread_create(char *name, int32_t num_tasks,
 		goto free_cam_kthread;
 	}
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (!g_cam_kthread_info.is_prop_valid &&
+	    (strstr(name, "CRMCORE") || strstr(name, "icp_command_queue") ||
+	     strstr(name, "message_queue"))) {
+		struct sched_attr attr = {
+			.size = sizeof(attr),
+			.sched_policy = SCHED_FIFO,
+			.sched_priority = 1,
+		};
+
+		rc = sched_setattr(cam_kthread->job->task, &attr);
+		if (rc) {
+			CAM_ERR(CAM_WORKER,
+				"Failed to set Oplus worker priority: %d", rc);
+			goto destroy_kthread_worker;
+		}
+	}
+#endif
+
 	/* Kthread attributes initialization*/
 	strscpy(cam_kthread->worker_name, buf, sizeof(cam_kthread->worker_name));
 	kthread_init_work(&cam_kthread->work, cam_kthread_process);
@@ -472,21 +491,6 @@ int cam_kthread_create(char *name, int32_t num_tasks,
 	}
 
 	kthread_data->kthread_worker = cam_kthread->job;
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	if (!g_cam_kthread_info.is_prop_valid &&
-	    (strstr(name, "CRMCORE") || strstr(name, "icp_command_queue") ||
-	     strstr(name, "message_queue"))) {
-		struct sched_attr attr = {
-			.size = sizeof(attr),
-			.sched_policy = SCHED_FIFO,
-			.sched_priority = 1,
-		};
-
-		rc = sched_setattr(cam_kthread->job->task, &attr);
-		if (rc)
-			CAM_WARN(CAM_WORKER, "Failed to set Oplus worker priority: %d", rc);
-	}
-#endif
 
 
 	if (!g_cam_kthread_info.is_list_initalized) {
