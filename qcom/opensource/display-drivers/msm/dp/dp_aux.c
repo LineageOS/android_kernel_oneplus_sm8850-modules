@@ -12,7 +12,12 @@
 #if IS_ENABLED(CONFIG_QCOM_WCD939X_I2C)
 #include <linux/soc/qcom/wcd939x-i2c.h>
 #endif
+#if IS_ENABLED(CONFIG_OPLUS_TYPEC_SWITCH_I2C)
+/*Add for oplus typec switch*/
+#include "oplus_typec_switch_i2c.h"
+#endif /* CONFIG_OPLUS_TYPEC_SWITCH_I2C */
 
+#include <linux/of_gpio.h>
 #include "dp_aux.h"
 #include "dp_hpd.h"
 #include "dp_debug.h"
@@ -21,6 +26,7 @@
 #include <soc/oplus/system/oplus_project.h>
 extern unsigned int is_project(int project);
 bool dp_ctrl_enable;
+int oplus_dp_ctrl_gpio = 0;
 #endif /* OPLUS_FEATURE_DISPLAY */
 
 #define DP_AUX_ENUM_STR(x)		#x
@@ -882,6 +888,55 @@ end:
 }
 #endif
 
+#if IS_ENABLED(CONFIG_OPLUS_TYPEC_SWITCH_I2C)
+static int dp_aux_configure_typec_switch(struct dp_aux *dp_aux,
+		bool enable, int orientation)
+{
+	struct dp_aux_private *aux;
+	int rc = 0;
+	enum typec_switch_function event = TYPEC_SWITCH_USBC_DISPLAYPORT_DISCONNECTED;
+
+	if (!dp_aux) {
+		DP_AUX_ERR(dp_aux, "invalid input\n");
+		rc = -EINVAL;
+		goto end;
+	}
+
+	aux = container_of(dp_aux, struct dp_aux_private, dp_aux);
+
+	if (!aux->aux_switch_node) {
+		DP_AUX_DEBUG(dp_aux, "undefined typec_switch handle\n");
+		rc = -EINVAL;
+		goto end;
+	}
+
+	if (enable) {
+		switch (orientation) {
+		case ORIENTATION_CC1:
+			event = TYPEC_SWITCH_USBC_ORIENTATION_CC1;
+			break;
+		case ORIENTATION_CC2:
+			event = TYPEC_SWITCH_USBC_ORIENTATION_CC2;
+			break;
+		default:
+			DP_AUX_ERR(dp_aux, "invalid orientation\n");
+			rc = -EINVAL;
+			goto end;
+		}
+	}
+
+	DP_AUX_DEBUG(dp_aux, "enable=%d, orientation=%d, event=%d\n",
+			enable, orientation, event);
+
+	rc = typec_switch_switch_event(aux->aux_switch_node, event);
+
+	if (rc)
+		DP_AUX_ERR(dp_aux, "failed to configure oplus typec_switch i2c device (%d)\n", rc);
+end:
+	return rc;
+}
+#endif
+
 struct dp_aux *dp_aux_get(struct device *dev, struct dp_catalog_aux *catalog,
 		struct dp_parser *parser, struct device_node *aux_switch,
 		struct dp_aux_bridge *aux_bridge, void *ipc_log_context,
@@ -927,6 +982,18 @@ struct dp_aux *dp_aux_get(struct device *dev, struct dp_catalog_aux *catalog,
 	dp_aux->ipc_log_context = ipc_log_context;
 
 #ifdef OPLUS_FEATURE_DISPLAY
+	oplus_dp_ctrl_gpio = OPLUS_AP_GPIO_OFFSET + OPLUS_DP_CONTROL_GPIO;
+	if (of_find_property(dev->of_node, "oplus,dp-ctrl-gpio", NULL)) {
+		oplus_dp_ctrl_gpio = of_get_named_gpio(dev->of_node, "oplus,dp-ctrl-gpio", 0);
+		if (!gpio_is_valid(oplus_dp_ctrl_gpio)) {
+			int gpio_ret = oplus_dp_ctrl_gpio < 0 ? oplus_dp_ctrl_gpio : -EINVAL;
+
+			mutex_destroy(&aux->mutex);
+			devm_kfree(dev, aux);
+			return ERR_PTR(gpio_ret);
+		}
+	}
+
 	dp_ctrl_enable = of_property_read_bool(dev->of_node,
 			"oplus,dp-ctrl-enable");
 	DP_AUX_WARN(dp_aux, "oplus,dp-ctrl-enable, dp_ctrl_enable:%d\n",
@@ -952,6 +1019,13 @@ struct dp_aux *dp_aux_get(struct device *dev, struct dp_catalog_aux *catalog,
 			dp_aux->switch_configure = dp_aux_configure_wcd_switch;
 			dp_aux->switch_register_notifier = wcd_usbss_reg_notifier;
 			dp_aux->switch_unregister_notifier = wcd_usbss_unreg_notifier;
+		}
+#endif
+#if IS_ENABLED(CONFIG_OPLUS_TYPEC_SWITCH_I2C)
+		if (switch_type == DP_AUX_SWITCH_OPLUS_TYPEC) {
+			dp_aux->switch_configure = dp_aux_configure_typec_switch;
+			dp_aux->switch_register_notifier = typec_switch_reg_notifier;
+			dp_aux->switch_unregister_notifier = typec_switch_unreg_notifier;
 		}
 #endif
 	}

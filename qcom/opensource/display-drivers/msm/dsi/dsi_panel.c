@@ -415,7 +415,11 @@ static int dsi_panel_reset(struct dsi_panel *panel)
 	}
 
 	for (i = 0; i < r_config->count; i++) {
+#ifdef OPLUS_FEATURE_DISPLAY
+		oplus_panel_gpio_set_value(r_config->reset_gpio,
+#else /* OPLUS_FEATURE_DISPLAY */
 		gpio_set_value(r_config->reset_gpio,
+#endif /* OPLUS_FEATURE_DISPLAY */
 			       r_config->sequence[i].level);
 
 
@@ -603,13 +607,32 @@ int dsi_panel_power_off(struct dsi_panel *panel)
 		return rc;
 	}
 
+#ifdef OPLUS_FEATURE_DISPLAY
+	// Special Adaptation
+	if (!strcmp(panel->name, "AA607 P 7 A0020 dsc cmd mode panel")
+		&& panel->cur_mode && (panel->cur_mode->timing.refresh_rate == 60)) {
+		usleep_range(10*1000, 10*1000 + 10);
+	} else if (!strcmp(panel->name, "AA616 P 7 A0020 dsc cmd mode panel")){
+		usleep_range(70*1000, 70*1000 + 10);
+	}
+#endif /* OPLUS_FEATURE_DISPLAY */
+
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
 	if (gpio_is_valid(panel->reset_config.reset_gpio) &&
 					!panel->reset_gpio_always_on)
+#ifdef OPLUS_FEATURE_DISPLAY
+	{
+		if (!strcmp(panel->name, "AE106 P 1 A0037 dsc cmd mode panel") ||
+			!strcmp(panel->name, "AE174 P 1 A0037 dsc cmd mode panel")) {
+			usleep_range(3*1000, 3*1000 + 10);
+		}
+		oplus_panel_gpio_set_value(panel->reset_config.reset_gpio, 0);
+	}
+#else /* OPLUS_FEATURE_DISPLAY */
 		gpio_set_value(panel->reset_config.reset_gpio, 0);
-
+#endif /* OPLUS_FEATURE_DISPLAY */
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
 

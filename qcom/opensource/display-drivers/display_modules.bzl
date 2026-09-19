@@ -347,5 +347,11 @@ module_entry(
         "CONFIG_QTI_HFI_CORE": [
             modules_label("qcom/opensource/mm-drivers/hfi_core:%b_msm_hfi_core"),
         ],
+#ifdef CONFIG_OPLUS_TYPEC_SWITCH_I2C
+        "CONFIG_OPLUS_TYPEC_SWITCH_I2C": [
+            modules_label("qcom/opensource/audio-kernel:%b_oplus_typec_switch_i2c"),
+            modules_label("qcom/opensource/audio-kernel:oplus_typec_switch_headers"),
+        ],
+#endif /* CONFIG_OPLUS_TYPEC_SWITCH_I2C */
     },
 )

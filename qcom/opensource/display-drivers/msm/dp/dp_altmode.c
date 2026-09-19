@@ -164,11 +164,11 @@ static int dp_altmode_notify(void *priv, void *data, size_t len)
 
 #ifdef OPLUS_FEATURE_DISPLAY
 	if (dp_ctrl_enable) {
-		if ((gpio_get_value(OPLUS_AP_GPIO_OFFSET + OPLUS_DP_CONTROL_GPIO) == 0)
+		if ((gpio_get_value(oplus_dp_ctrl_gpio) == 0)
 				&& hpd_state == 1) {
-			DP_INFO("set gpio %d to high\n", OPLUS_DP_CONTROL_GPIO);
-			gpio_direction_output(OPLUS_AP_GPIO_OFFSET + OPLUS_DP_CONTROL_GPIO, 1);
-			gpio_set_value(OPLUS_AP_GPIO_OFFSET + OPLUS_DP_CONTROL_GPIO, 1);
+			DP_INFO("set gpio %d to high\n", oplus_dp_ctrl_gpio);
+			gpio_direction_output(oplus_dp_ctrl_gpio, 1);
+			gpio_set_value(oplus_dp_ctrl_gpio, 1);
 		}
 	}
 #endif /* OPLUS_FEATURE_DISPLAY */

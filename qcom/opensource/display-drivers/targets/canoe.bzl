@@ -38,6 +38,7 @@ def define_canoe():
                     "CONFIG_HDCP_QSEECOM",
                     "CONFIG_DRM_SDE_VM",
                     "CONFIG_QCOM_WCD939X_I2C",
+                    "CONFIG_OPLUS_TYPEC_SWITCH_I2C",
                     "CONFIG_THERMAL_OF",
                     "CONFIG_QCOM_SPEC_SYNC",
                     "CONFIG_MSM_EXT_DISPLAY",

@@ -2591,7 +2591,12 @@ static int sde_encoder_phys_wb_prepare_for_kickoff(struct sde_encoder_phys *phys
 {
 	struct sde_encoder_phys_wb *wb_enc = to_sde_encoder_phys_wb(phys_enc);
 	int ret = 0;
-
+#ifdef OPLUS_FEATURE_DISPLAY
+	if (!phys_enc || !phys_enc->parent || !phys_enc->parent->dev || !phys_enc->parent->dev->dev_private) {
+		SDE_ERROR("invalid parameters\n");
+		return -EINVAL;
+	}
+#endif
 	phys_enc->frame_trigger_mode = params ?
 		params->frame_trigger_mode : FRAME_DONE_WAIT_DEFAULT;
 	if (!phys_enc->in_clone_mode && (phys_enc->frame_trigger_mode == FRAME_DONE_WAIT_DEFAULT)

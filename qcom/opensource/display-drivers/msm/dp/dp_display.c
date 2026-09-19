@@ -960,9 +960,9 @@ static bool dp_display_send_hpd_event(struct dp_display_private *dp)
 #ifdef OPLUS_FEATURE_DISPLAY
 	if (dp_ctrl_enable) {
 		if (connector_status_disconnected == connector->status) {
-			DP_INFO("set gpio %d to low\n", OPLUS_DP_CONTROL_GPIO);
-			gpio_direction_output(OPLUS_AP_GPIO_OFFSET + OPLUS_DP_CONTROL_GPIO, 0);
-			gpio_set_value(OPLUS_AP_GPIO_OFFSET + OPLUS_DP_CONTROL_GPIO, 0);
+			DP_INFO("set gpio %d to low\n", oplus_dp_ctrl_gpio);
+			gpio_direction_output(oplus_dp_ctrl_gpio, 0);
+			gpio_set_value(oplus_dp_ctrl_gpio, 0);
 		}
 	}
 #endif /* OPLUS_FEATURE_DISPLAY */
@@ -1136,9 +1136,9 @@ static int dp_display_host_init(struct dp_display_private *dp)
 
 #ifdef OPLUS_FEATURE_DISPLAY
 	if (dp_ctrl_enable) {
-		DP_INFO("set gpio %d to high\n", OPLUS_DP_CONTROL_GPIO);
-		gpio_direction_output(OPLUS_AP_GPIO_OFFSET + OPLUS_DP_CONTROL_GPIO, 1);
-		gpio_set_value(OPLUS_AP_GPIO_OFFSET + OPLUS_DP_CONTROL_GPIO, 1);
+		DP_INFO("set gpio %d to high\n", oplus_dp_ctrl_gpio);
+		gpio_direction_output(oplus_dp_ctrl_gpio, 1);
+		gpio_set_value(oplus_dp_ctrl_gpio, 1);
 	}
 #endif /* OPLUS_FEATURE_DISPLAY */
 
@@ -2284,10 +2284,17 @@ static int dp_init_sub_modules(struct dp_display_private *dp)
 		dp->no_aux_switch = true;
 	}
 
-	if (!strcmp(dp->aux_switch_node->name, "fsa4480"))
+	if (!dp->aux_switch_node)
+		dp->switch_type = DP_AUX_SWITCH_BYPASS;
+	else if (!strcmp(dp->aux_switch_node->name, "fsa4480"))
 		dp->switch_type = DP_AUX_SWITCH_FSA4480;
 	else if (!strcmp(dp->aux_switch_node->name, "wcd939x_i2c"))
 		dp->switch_type = DP_AUX_SWITCH_WCD939x;
+#if IS_ENABLED(CONFIG_OPLUS_TYPEC_SWITCH_I2C)
+/*Add for oplus typec switch*/
+	else if (!strcmp(dp->aux_switch_node->name, "typec_switch"))
+		dp->switch_type = DP_AUX_SWITCH_OPLUS_TYPEC;
+#endif /* CONFIG_OPLUS_TYPEC_SWITCH_I2C */
 	else
 		dp->switch_type = DP_AUX_SWITCH_BYPASS;
 

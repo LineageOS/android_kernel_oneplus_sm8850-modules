@@ -904,6 +904,12 @@ static void dsi_display_set_cmd_tx_ctrl_flags(struct dsi_display *display,
 			}
 #endif /* OPLUS_FEATURE_DISPLAY */
 		} else {
+#ifdef OPLUS_FEATURE_DISPLAY
+			if (msg->tx_buf && msg->tx_len &&
+				((const u8 *)msg->tx_buf)[0] == 0x51 &&
+				display->panel->oplus_panel.aod_backlight_async)
+				flags |= DSI_CTRL_CMD_ASYNC_WAIT;
+#endif
 			if (msg->flags & MIPI_DSI_MSG_CMD_DMA_SCHED)
 				flags |= DSI_CTRL_CMD_CUSTOM_DMA_SCHED;
 			if (flags & DSI_CTRL_CMD_BROADCAST)

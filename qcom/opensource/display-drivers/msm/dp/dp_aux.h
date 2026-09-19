@@ -34,6 +34,10 @@ enum dp_aux_switch_type {
 	DP_AUX_SWITCH_BYPASS,
 	DP_AUX_SWITCH_FSA4480,
 	DP_AUX_SWITCH_WCD939x,
+#if IS_ENABLED(CONFIG_OPLUS_TYPEC_SWITCH_I2C)
+/*Add for oplus typec switch*/
+	DP_AUX_SWITCH_OPLUS_TYPEC,
+#endif /* CONFIG_OPLUS_TYPEC_SWITCH_I2C */
 };
 
 enum dp_aux_error {

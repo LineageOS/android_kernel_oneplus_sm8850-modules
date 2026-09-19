@@ -13,6 +13,7 @@
 
 #ifdef OPLUS_FEATURE_DISPLAY
 extern bool dp_ctrl_enable;
+extern int oplus_dp_ctrl_gpio;
 #endif /* OPLUS_FEATURE_DISPLAY */
 struct device;
 
