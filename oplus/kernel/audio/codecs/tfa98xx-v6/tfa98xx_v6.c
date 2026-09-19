@@ -251,6 +251,11 @@ const unsigned char tfa9865_fb_regs[] = {REG_SYS_CONTROL0, REG_SYS_CONTROL1,
 #endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 static char *fw_name = "tfa98xx.cnt";
+#ifdef OPLUS_ARCH_EXTENDS
+static char *fw_name_sec = NULL;
+static u32 secondary_reg_value = 0;
+#endif /* OPLUS_ARCH_EXTENDS */
+
 module_param(fw_name, charp, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(fw_name, "TFA98xx DSP firmware (container file) name.");
 
@@ -5720,6 +5725,10 @@ static int tfa98xx_parse_dt(struct device *dev, struct tfa98xx *tfa98xx,
 #if IS_ENABLED(CONFIG_OPLUS_FPGA_NOTIFY)
 	int32_t fpga_chk_enable = 0;
 #endif /* CONFIG_OPLUS_FPGA_NOTIFY */
+#ifdef OPLUS_ARCH_EXTENDS
+	const char *fw_name_dt = NULL;
+#endif /* OPLUS_ARCH_EXTENDS */
+
 
 	tfa98xx->reset_gpio = of_get_named_gpio(np, "reset-gpio", 0);
 	if (tfa98xx->reset_gpio < 0)
@@ -5751,6 +5760,20 @@ static int tfa98xx_parse_dt(struct device *dev, struct tfa98xx *tfa98xx,
 	dev_info(dev,
 		"fpga_check_enable is %d\n", tfa98xx->fpga_check_enable);
 #endif /* CONFIG_OPLUS_FPGA_NOTIFY */
+#ifdef OPLUS_ARCH_EXTENDS
+	ret = of_property_read_string(np, "secondary-firmware-name", &fw_name_dt);
+	if (ret == 0 && fw_name_dt) {
+		fw_name_sec = (char *)fw_name_dt;
+		dev_info(dev, "Secondary firmware name: %s\n", fw_name_sec ? fw_name_sec : "NULL");
+
+		ret = of_property_read_u32(np, "secondary-firmware-reg-value", &secondary_reg_value);
+		if (ret == 0 && secondary_reg_value) {
+			dev_info(dev, "Secondary firmware register value: 0x%x\n", secondary_reg_value);
+		} else {
+			dev_err(dev, "Need config Secondary firmware register in dts\n");
+		}
+	}
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	return 0;
 }
@@ -6285,6 +6308,16 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 /*Add for smartpa err feedback*/
 			g_pa_type = PA_TFA9865;
 #endif
+#ifdef OPLUS_ARCH_EXTENDS
+			ret = regmap_read(tfa98xx->regmap, 0x06, &reg);
+			dev_info(tfa98xx->dev, "Register 0x06 = 0x%x, ret = %d\n", reg, ret);
+			if (ret >= 0 && secondary_reg_value != 0 && reg == secondary_reg_value && fw_name_sec) {
+				fw_name = fw_name_sec;
+				dev_info(tfa98xx->dev, "Register value 0x%x matches secondary, using firmware: %s\n", reg, fw_name);
+			} else {
+				dev_info(tfa98xx->dev, "Using default firmware: %s\n", fw_name);
+			}
+#endif /* OPLUS_ARCH_EXTENDS */
 			break;
 		case 0x88: /* tfa9888 */
 			pr_info("TFA9888 detected\n");
@@ -6398,9 +6431,7 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 
 	/* get assigned cnt name from dts */
 	ret = of_property_read_string(i2c->dev.of_node, "tfa_fw_name", &tmp_fw_name);
-	if (ret) {
-		dev_info(&i2c->dev, "use firmware:tfa98xx.cnt\n");
-	} else {
+	if (ret == 0 && tmp_fw_name != NULL) {
 		fw_name = (char*)tmp_fw_name;
 		dev_info(&i2c->dev, "use firmware:%s\n", fw_name);
 	}

@@ -754,6 +754,16 @@ static int sipa_owi_init(
 /********************************************************************
  * si_pa chip option
  ********************************************************************/
+static void sipa_get_rst_value(sipa_dev_t *si_pa)
+{
+	unsigned int gpio_value = 0xff;
+	if (0 == si_pa->disable_pin) {
+		gpio_value = gpio_get_value(si_pa->rst_pin);
+		pr_debug("[debug][%s] %s: reset pin num:%u, value:%u \r\n",
+			LOG_FLAG, __func__, si_pa->rst_pin, gpio_value);
+	}
+}
+
 static bool is_chip_type_supported(unsigned int chip_type)
 {
 	if (chip_type >= ARRAY_SIZE(support_chip_type_name_table))
@@ -801,6 +811,7 @@ int sipa_reg_init(
 	}
 
 	usleep_range(100,200);
+	sipa_get_rst_value(si_pa);
 	if (0 != sipa_regmap_check_chip_id(si_pa->regmap,
 			si_pa->channel_num, si_pa->chip_type)) {
 		pr_err("[  err][%s] %s: sipa_regmap_check_chip_id error !!! \r\n",
@@ -1234,6 +1245,8 @@ static int sipa_resume(
 			if (CHIP_TYPE_SIA8109 == si_pa->chip_type ||
 				CHIP_TYPE_SIA81X9 == si_pa->chip_type)
 				msleep(39); /* for sia8109 gain rising. */
+
+			sipa_get_rst_value(si_pa);
 		}
 
 		sipa_reg_init(si_pa);
@@ -1276,6 +1289,12 @@ static int sipa_suspend(
 		if (!IS_DIGITAL_PA_TYPE(si_pa->chip_type)) {
 			if (0 == si_pa->disable_pin) {
 				/* power off chip */
+				if (IS_SIPA_RST_KEEP_HIGH(si_pa->chip_type)) {
+					if (gpio_get_value(si_pa->rst_pin) == SIA81XX_ENABLE_LEVEL) {
+						pr_info("[ info][%s] CHIP_TYPE_SIA8168 rst need keep high\r\n", __func__);
+						return 0;
+					}
+				}
 				gpio_set_value(si_pa->rst_pin, SIA81XX_DISABLE_LEVEL);
 				usleep_range(5000, 6000);  /* wait chip power off, the time must be > 5ms */
 			}
@@ -2705,6 +2724,7 @@ static unsigned int get_chip_type(const char *name)
 			}
 		}
 		else {
+			memset((void *)chip_type_copy, '\0', sizeof(chip_type_copy));
 			memcpy((void *)chip_type_copy, support_chip_type_name_table[i], strlen(support_chip_type_name_table[i]));
 			copy_p = chip_type_copy;
 			temp = strsep(&copy_p, delim);
@@ -2780,9 +2800,14 @@ unsigned int get_one_available_chip_type(unsigned int chip_type)
 static void sipa_set_rst(sipa_dev_t *si_pa, int value)
 {
 	if (0 == si_pa->disable_pin && !IS_SUPPORT_OWI_TYPE(si_pa->chip_type)) {
+		if (IS_SIPA_RST_KEEP_HIGH(si_pa->chip_type)) {
+			if (gpio_get_value(si_pa->rst_pin) == SIA81XX_ENABLE_LEVEL)
+				return;
+		}
 		gpio_set_value(si_pa->rst_pin, value);
-		usleep_range(1000, 1200);
+		usleep_range(3000, 3200);
 	}
+	sipa_get_rst_value(si_pa);
 }
 
 #ifdef DISTINGUISH_CHIP_TYPE
@@ -2925,13 +2950,18 @@ static int detect_i2c_slave(sipa_dev_t *si_pa)
 		usleep_range(2000, 2100);
 
 		sipa_set_rst(si_pa, SIA81XX_ENABLE_LEVEL);
-		usleep_range(1000, 1100);/* wait chip power up, the time must be > 1ms */
+		usleep_range(3000, 3200);/* wait chip power up, the time must be > 1ms */
 	}
 
+	sipa_get_rst_value(si_pa);
 	if (0 != sipa_regmap_check_chip_id(si_pa->regmap, si_pa->channel_num, si_pa->chip_type)) {
 		pr_warn("[ warn][%s] %s: sia81xx_regmap_check_chip_id failed !!! \r\n",
 			LOG_FLAG, __func__);
 		return -EINVAL;
+	}
+
+	if (IS_SIPA_RST_KEEP_HIGH(si_pa->chip_type)) {
+		return 0;
 	}
 
 	sipa_set_rst(si_pa, SIA81XX_DISABLE_LEVEL);

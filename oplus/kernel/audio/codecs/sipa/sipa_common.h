@@ -212,6 +212,11 @@ enum {
 			 : false
 
 
+#define IS_SIPA_RST_KEEP_HIGH(type) \
+	((type == CHIP_TYPE_SIA8168  )  \
+	 ? true \
+	 : false)
+
 #define SIPA_MAX_REG_ADDR					(0xFF)
 
 #define SIA81XX_REG_R_O						(0x00000001)
