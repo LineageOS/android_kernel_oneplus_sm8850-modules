@@ -28,13 +28,10 @@ def define_oplus_local_modules():
             oplus_fp_ko_deps =[]
             oplus_fp_copts =[]
     else :
-        oplus_fp_ko_deps =select({
-                "//build/kernel/kleaf:socrepo_true": [
+        oplus_fp_ko_deps =[
                     modules_label("oplus/kernel/touchpanel/touchpanel_notify/bazel:oplus_bsp_tp_notify"),
                     soc_label("{}/drivers/soc/qcom/panel_event_notifier").format(kernel_build_variant),
-                ],
-                "//build/kernel/kleaf:socrepo_false": [],
-            })
+                ]
         oplus_fp_copts =[]
 
     define_oplus_ddk_module(

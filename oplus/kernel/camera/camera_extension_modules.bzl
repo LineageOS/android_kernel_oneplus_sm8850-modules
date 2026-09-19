@@ -6,15 +6,9 @@ load(":target_variants.bzl", "get_all_variants")
 def _define_module(target, variant):
     tv = "{}_{}".format(target, variant)
 
-    kernel_build = select({
-        "//build/kernel/kleaf:socrepo_true": soc_label("{}_base_kernel").format(tv),
-        "//build/kernel/kleaf:socrepo_false": "//msm-kernel:{}".format(tv),
-    })
+    kernel_build = soc_label("{}_base_kernel").format(tv)
 
-    deps_load = select({
-        "//build/kernel/kleaf:socrepo_true": [soc_label("all_headers")],
-        "//build/kernel/kleaf:socrepo_false": ["//msm-kernel:all_headers"],
-    })
+    deps_load = [soc_label("all_headers")]
 
     ddk_module(
         name = "{}_camera_extension".format(tv),

@@ -17,19 +17,13 @@ def define_oplus_local_modules():
 
 
     if bazel_support_platform == "qcom" :
-        panel_event_notifier_ko_deps = select({
-            "//build/kernel/kleaf:socrepo_true": [
+        panel_event_notifier_ko_deps = [
                 soc_label("{}/drivers/soc/qcom/panel_event_notifier").format(kernel_build_variant),
-            ],
-            "//build/kernel/kleaf:socrepo_false": [],
-        })
-        tp_others_ko_deps = select({
-            "//build/kernel/kleaf:socrepo_true": [
+            ]
+        tp_others_ko_deps = [
                 modules_label("oplus/kernel/touchpanel/touchpanel_notify/bazel:oplus_bsp_tp_notify"),
                 modules_label("oplus/kernel/touchpanel/kernelFwUpdate/bazel:oplus_bsp_fw_update"),
-            ],
-            "//build/kernel/kleaf:socrepo_false": [],
-        })
+            ]
         ko_deps = [
                 modules_label("oplus/kernel/tp/hbp/hbp:oplus_hbp_core"),
         ]
