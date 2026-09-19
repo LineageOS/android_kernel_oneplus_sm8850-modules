@@ -1746,6 +1746,31 @@ static int oplus_chg_vc_set_sstimeout_ucp_enable(struct oplus_chg_ic_dev *ic_dev
 	return rc;
 }
 
+static int oplus_chg_vc_set_pmid2vout_ovp_enable(struct oplus_chg_ic_dev *ic_dev, bool enable)
+{
+	struct oplus_virtual_cp_ic *vc;
+	int rc = 0;
+
+	if (ic_dev == NULL) {
+		chg_err("oplus_chg_ic_dev is NULL");
+		return -ENODEV;
+	}
+
+	vc = oplus_chg_ic_get_drvdata(ic_dev);
+	if (vc == NULL) {
+		chg_err("oplus virtual cp is NULL");
+		return -ENODEV;
+	}
+
+	if (vc->main_cp < 0 || vc->main_cp >= vc->child_num)
+		return -EINVAL;
+	rc = oplus_chg_ic_func(vc->child_list[vc->main_cp].ic_dev,
+			OPLUS_IC_FUNC_CP_SET_PMID2VOUT_OVP_ENABLE, enable);
+	if (rc < 0 && rc != -ENOTSUPP)
+		chg_err("main cp set pmid2vout ovp err, enable = %d, rc=%d\n", enable, rc);
+	return rc;
+}
+
 static int oplus_chg_vc_get_work_status(struct oplus_chg_ic_dev *ic_dev, bool *start)
 {
 	struct oplus_virtual_cp_ic *vc;
@@ -2186,6 +2211,10 @@ static void *oplus_chg_vc_get_func(struct oplus_chg_ic_dev *ic_dev, enum oplus_c
 	case OPLUS_IC_FUNC_CP_SET_SSTIMEOUT_UCP_ENABLE:
 		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_CP_SET_SSTIMEOUT_UCP_ENABLE,
 			oplus_chg_vc_set_sstimeout_ucp_enable);
+		break;
+	case OPLUS_IC_FUNC_CP_SET_PMID2VOUT_OVP_ENABLE:
+		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_CP_SET_PMID2VOUT_OVP_ENABLE,
+			oplus_chg_vc_set_pmid2vout_ovp_enable);
 		break;
 	default:
 		chg_err("this func(=%d) is not supported\n", func_id);

@@ -189,6 +189,16 @@ config OPLUS_PHY_SC8547D
 	help
 	  Say Y here to declare sc8547d voocphy && ufcs phy support
 
+config OPLUS_BOOST_SC83107
+	bool "enable hybrid boost sc83107"
+	help
+	  Say Y here to declare hybrid boost sc83107 support
+
+config OPLUS_VOOCPHY_SC8527
+	bool "enable REG CP sc8527"
+	help
+	  Say Y here to declare REG CP sc8527 support
+
 config OPLUS_WIRELESS_NU1619
 	bool "oplus wireless nu1619 support"
 	help
@@ -362,3 +372,8 @@ config OPLUS_LIQUID_DETECTION
 	bool "liquid detection support"
 	help
 	  Say Y here to declare liquid detection support
+
+config OPLUS_CANCEL_USB_SWITCH
+	bool "cancel usb switch support"
+	help
+	  Say Y here to declare cancel usb switch support

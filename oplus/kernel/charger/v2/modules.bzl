@@ -93,6 +93,11 @@ conditional_hdr_deps = {
             ":ufcs_class_headers"
         ],
     },
+    "CONFIG_OPLUS_MT6375_CHARGER": {
+        True: [
+            ":oplus_chg_headers",
+        ],
+    },
     "CONFIG_DISABLE_OPLUS_FUNCTION": {
         False: [
             modules_label("oplus/kernel/touchpanel/kernelFwUpdate/bazel:oplus_bsp_fw_update_headers"),
@@ -351,6 +356,11 @@ def define_oplus_chg_v2_module():
                 "v2/voocphy/phy/oplus_sc8517.c"
             ],
         },
+        "CONFIG_OPLUS_VOOCPHY_SC8527": {
+            True: [
+                "v2/voocphy/phy/oplus_sc8527.c"
+            ],
+        },
         "CONFIG_OPLUS_VOOCPHY_MAX77939": {
             True: [
                 "v2/voocphy/phy/oplus_max77939.c"
@@ -424,6 +434,11 @@ def define_oplus_chg_v2_module():
         "CONFIG_OPLUS_CHARGEPUMP_HL7227": {
             True: [
                 "v2/chargepump_ic/oplus_hal_hl7227.c"
+            ],
+        },
+        "CONFIG_OPLUS_BOOST_SC83107": {
+            True: [
+                "v2/boost_ic/oplus_sc83107.c"
             ],
         },
         "CONFIG_OPLUS_SEC_IC_SC5891": {

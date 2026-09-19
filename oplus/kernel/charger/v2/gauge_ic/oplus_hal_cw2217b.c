@@ -75,6 +75,10 @@ struct gauge_track_info_reg cw_standard[] = {
 
 #ifndef CONFIG_OPLUS_CHARGER_MTK
 #if IS_ENABLED(CONFIG_OPLUS_ADSP_CHARGER)
+void __attribute__((weak)) oplus_get_gauge_chip_is_null_pfunc(bool (*pfunc)(void))
+{
+	return;
+}
 void __attribute__((weak)) oplus_vooc_get_fastchg_started_pfunc(int (*pfunc)(void))
 {
 	return;
@@ -84,6 +88,7 @@ void __attribute__((weak)) oplus_vooc_get_fastchg_ing_pfunc(int (*pfunc)(void))
 	return;
 }
 #else /*IS_ENABLED(CONFIG_OPLUS_ADSP_CHARGER)*/
+void __attribute__((weak)) oplus_get_gauge_chip_is_null_pfunc(bool (*pfunc)(void));
 void __attribute__((weak)) oplus_vooc_get_fastchg_started_pfunc(int (*pfunc)(void));
 void __attribute__((weak)) oplus_vooc_get_fastchg_ing_pfunc(int (*pfunc)(void));
 #endif /*IS_ENABLED(CONFIG_OPLUS_ADSP_CHARGER)*/
@@ -1811,6 +1816,8 @@ static int cw2217_probe(struct i2c_client *client, const struct i2c_device_id *i
 		goto error;
 
 #ifndef CONFIG_OPLUS_CHARGER_MTK
+	if (oplus_get_gauge_chip_is_null_pfunc)
+		oplus_get_gauge_chip_is_null_pfunc(&oplus_gauge_check_chip_is_null);
 	oplus_vooc_get_fastchg_started_pfunc(&oplus_vooc_get_fastchg_started);
 	oplus_vooc_get_fastchg_ing_pfunc(&oplus_vooc_get_fastchg_ing);
 #endif

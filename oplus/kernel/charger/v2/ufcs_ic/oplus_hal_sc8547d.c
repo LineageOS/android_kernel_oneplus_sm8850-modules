@@ -2545,7 +2545,12 @@ static int sc8547_slave_charger_choose(struct sc8547d_device *chip)
 		pr_err("0x07 = %d\n", ret);
 		if (ret < 0) {
 			pr_err("i2c communication fail");
-			return -EPROBE_DEFER;
+			if (oplus_voocphy_slave_chip_is_null()) {
+				return -EPROBE_DEFER;
+			} else {
+				chg_err("not use sc8547d slave");
+				return ret;
+			}
 		}
 		else
 			return 1;

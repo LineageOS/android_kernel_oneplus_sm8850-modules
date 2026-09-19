@@ -58,6 +58,7 @@ struct upm7610_chip {
 	int irq;
 	int chip_id;
 	int chip_func_sw;
+	bool lpm_en;
 };
 
 #if IS_ENABLED(CONFIG_RT_REGMAP)
@@ -354,7 +355,6 @@ static inline int upm7610_software_reset(struct tcpc_device *tcpc)
 	rt_regmap_cache_reload(chip->m_dev);
 #endif /* CONFIG_RT_REGMAP */
 	usleep_range(1000, 2000);
-	upm7610_i2c_write8(tcpc, UPM7610_REG_RESET_CTRL, MASK_EXT_STATUS);
 	return 0;
 }
 
@@ -376,8 +376,8 @@ static int upm7610_init_alert_mask(struct tcpc_device *tcpc)
 			| TCPC_V10_REG_ALERT_TX_FAILED
 			| TCPC_V10_REG_ALERT_RX_HARD_RST
 			| TCPC_V10_REG_ALERT_RX_STATUS
-			| TCPC_V10_REG_EXTENED_STATUS
 			| TCPC_V10_REG_RX_OVERFLOW
+			| TCPC_V10_REG_EXT_STATUS
 			| TCPC_V10_REG_VBUS_SINK_DISCONNECT
 			| TCPC_V10_REG_ALERT_VENDOR_DEFINED;
 #endif
@@ -426,6 +426,7 @@ static int upm7610_init_up_mask(struct tcpc_device *tcpc)
 {
 	uint8_t up_mask = 0;
 
+	up_mask |= UPM7610_REG_VSAFE0V_STATUS_MASK;
 	up_mask |= UPM7610_REG_REF_DISCNT_MASK;
 #ifdef CONFIG_TYPEC_CAP_RA_DETACH
 	if (tcpc->tcpc_flags & TCPC_FLAGS_CHECK_RA_DETACH)
@@ -772,6 +773,32 @@ static int upm7610_get_cc(struct tcpc_device *tcpc, int *cc1, int *cc2)
 	return 0;
 }
 
+static int upm7610_enable_vsafe0v_detect(struct tcpc_device *tcpc, bool enable)
+{
+	int val1 = 0, val2 = 0;
+
+	val1 = upm7610_i2c_read8(tcpc, UPM7610_REG_VDR_DEF_ALERT_MASK);
+	if (val1 < 0)
+		return val1;
+
+	val2 = upm7610_i2c_read8(tcpc, TCPC_V10_REG_ALERT_MASK+1);
+	if (val2 < 0)
+		return val2;
+
+	 if (enable) {
+		val1 |= (UPM7610_REG_VSAFE0V_STATUS_MASK);
+		val2 |= (TCPC_V10_REG_EXTENDED_STATUS>>8);
+	} else {
+		val1 &= ~(UPM7610_REG_VSAFE0V_STATUS_MASK);
+		val2 &= ~(TCPC_V10_REG_EXTENDED_STATUS>>8);
+	}
+
+	upm7610_i2c_write8(tcpc, UPM7610_REG_VDR_DEF_ALERT_MASK, (uint8_t) val1);
+	upm7610_i2c_write8(tcpc, TCPC_V10_REG_ALERT_MASK+1, (uint8_t) val2);
+
+	return 0;
+}
+
 static int upm7610_set_cc(struct tcpc_device *tcpc, int pull)
 {
 	int ret;
@@ -785,8 +812,10 @@ static int upm7610_set_cc(struct tcpc_device *tcpc, int pull)
 
 		ret = upm7610_i2c_write8(tcpc, TCPC_V10_REG_ROLE_CTRL, data);
 
-		if (ret == 0)
+		if (ret == 0) {
+			upm7610_enable_vsafe0v_detect(tcpc, false);
 			ret = upm7610_command(tcpc, TCPM_CMD_LOOK_CONNECTION);
+		}
 	} else {
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 		if (pull == TYPEC_CC_RD && tcpc->pd_wait_pr_swap_complete)
@@ -846,6 +875,23 @@ static int upm7610_set_vconn(struct tcpc_device *tcpc, int enable)
 
 	return 0;
 }
+
+#ifdef CONFIG_TCPC_LOW_POWER_MODE
+static int upm7610_is_low_power_mode(struct tcpc_device *tcpc)
+{
+	struct upm7610_chip *chip = tcpc_get_dev_data(tcpc);
+
+	return chip->lpm_en;
+}
+
+static int upm7610_set_low_power_mode(struct tcpc_device *tcpc, bool en, int pull)
+{
+	struct upm7610_chip *chip = tcpc_get_dev_data(tcpc);
+	chip->lpm_en = en;
+	upm7610_enable_vsafe0v_detect(tcpc, !en);
+	return 0;
+}
+#endif /* CONFIG_TCPC_LOW_POWER_MODE */
 
 static int upm7610_set_shutdown_power_mode(struct tcpc_device *tcpc, bool en)
 {
@@ -1040,6 +1086,11 @@ static struct tcpc_ops upm7610_tcpc_ops = {
 	.deinit = upm7610_tcpc_deinit,
 	.init_alert_mask = upm7610_init_alert_mask,
 
+#ifdef CONFIG_TCPC_LOW_POWER_MODE
+	.is_low_power_mode = upm7610_is_low_power_mode,
+	.set_low_power_mode = upm7610_set_low_power_mode,
+#endif
+
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	.set_msg_header = upm7610_set_msg_header,
 	.set_rx_enable = upm7610_set_rx_enable,
@@ -1230,8 +1281,6 @@ static inline int upm7610_check_revision(struct i2c_client *client)
 	if (ret < 0)
 		return ret;
 
-	data = MASK_EXT_STATUS;
-	ret = upm7610_write_device(client, UPM7610_REG_RESET_CTRL, 1, &data);
 	usleep_range(1000, 2000);
 
 	ret = upm7610_read_device(client, TCPC_V10_REG_DID, 2, &did);
