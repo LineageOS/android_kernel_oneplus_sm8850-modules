@@ -433,7 +433,7 @@ int cam_kthread_create(char *name, int32_t num_tasks,
 			.sched_priority = 1,
 		};
 
-		rc = sched_setattr(cam_kthread->job->task, &attr);
+		rc = sched_setattr_nocheck(cam_kthread->job->task, &attr);
 		if (rc) {
 			CAM_ERR(CAM_WORKER,
 				"Failed to set Oplus worker priority: %d", rc);
