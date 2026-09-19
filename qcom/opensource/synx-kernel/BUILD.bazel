@@ -53,3 +53,9 @@ define_seraph()
 load(":autogvm.bzl", "define_autogvm")
 
 define_autogvm()
+
+filegroup(
+    name = "dt_binding_headers",
+    srcs = glob(["dt-bindings/**/*.h"], allow_empty = False),
+    visibility = ["//visibility:public"],
+)

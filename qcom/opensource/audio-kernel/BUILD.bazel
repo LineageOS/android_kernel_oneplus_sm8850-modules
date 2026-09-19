@@ -102,3 +102,9 @@ define_pineapple()
 define_blair()
 define_canoe()
 define_malabar()
+
+filegroup(
+    name = "dt_binding_headers",
+    srcs = glob(["include/bindings/**/*.h"], allow_empty = False),
+    visibility = ["//visibility:public"],
+)

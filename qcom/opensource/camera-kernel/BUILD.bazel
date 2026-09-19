@@ -190,3 +190,9 @@ config_setting(
     name = "chora",
     flag_values = {":project_name": "chora"},
 )
+
+filegroup(
+    name = "dt_binding_headers",
+    srcs = glob(["dt-bindings/**/*.h"], allow_empty = False),
+    visibility = ["//visibility:public"],
+)
