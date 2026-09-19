@@ -194,11 +194,14 @@ struct cam_sensor_ctrl_t {
 	uint8_t                        cam_sensor_reg_otp[CAM_OEM_OTP_DATA_MAX_LENGTH];
 	uint32_t                       swremosaic_sensor_id;
 	uint32_t                       is_need_framedrop;
+        uint32_t                       is_need_clk_stretch;
 	uint32_t                       streamon_num;
 	bool                           need_write_probe_register;
 	struct cam_sensor_i2c_reg_setting probe_reg_setting;
 	bool                           is_in_high_level;
 	struct sensor_vsync_info	   vsync_info;
+	int                            rst_gpio;
+	int                            is_io_extension_sensor;
 #endif
 	int32_t                        req_table_wr_idx;
 	uint64_t                       req_table[MAX_PER_FRAME_ARRAY];

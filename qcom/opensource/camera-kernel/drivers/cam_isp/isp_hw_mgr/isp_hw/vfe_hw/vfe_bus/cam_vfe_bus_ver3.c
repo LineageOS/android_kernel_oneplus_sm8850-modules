@@ -5544,8 +5544,10 @@ static int cam_vfe_bus_ver3_dump_wm_mid_info(
 	for (num_wm = 0; num_wm < out_rsrc_data->num_wm; num_wm++) {
 		wm_data = out_rsrc_data->wm_res[num_wm]->res_priv;
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
-		if (!wm_data)
+		if (!wm_data) {
+			CAM_ERR(CAM_ISP, "WM:%d data is NULL at %d", i, num_wm);
 			continue;
+		}
 #endif
 
 		if (wm_data == NULL) {

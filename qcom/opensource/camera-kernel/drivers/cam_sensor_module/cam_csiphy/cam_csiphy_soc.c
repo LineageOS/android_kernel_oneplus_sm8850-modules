@@ -26,6 +26,9 @@
 #include "include/cam_csiphy_2_4_0_hwreg_lafa_front.h"
 #include "include/cam_csiphy_2_4_0_hwreg_lafa_tele.h"
 #include "include/cam_csiphy_2_4_0_hwreg_macan_main.h"
+#include "include/cam_csiphy_2_4_0_hwreg_fairlady_main.h"
+#include "include/cam_csiphy_2_4_0_hwreg_fairlady_tele.h"
+#include "include/cam_csiphy_2_4_0_hwreg_fairlady_front.h"
 #endif
 
 /* Clock divide factor for CPHY spec v1.0 */
@@ -418,6 +421,21 @@ int32_t cam_csiphy_parse_dt_info(struct platform_device *pdev,
 	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-lafatele")) {
 		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_lafa_tele;
 		csiphy_dev->hw_version = CSIPHY_VERSION_V240_LAFA_TELE;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-fairladymain")) {
+		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_fairlady_main;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V240_FAIRLADY_MAIN;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-fairladytele")) {
+		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_fairlady_tele;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V240_FAIRLADY_TELE;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-fairladyfront")) {
+		csiphy_dev->ctrl_reg = &ctrl_reg_2_4_0_fairlady_front;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V240_FAIRLADY_FRONT;
 		csiphy_dev->is_divisor_32_comp = true;
 		csiphy_dev->clk_lane = 0;
 	} else if (of_device_is_compatible(soc_info->dev->of_node, "qcom,csiphy-macanmain")) {

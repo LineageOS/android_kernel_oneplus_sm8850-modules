@@ -1420,13 +1420,23 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 				s_ctrl->probe_sensor_slave_addr >> 1;
 		}
 	}
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	oplus_get_sensor_gpio_status(s_ctrl);
+	int ret = 0;
+	ret = oplus_sensor_special_config(s_ctrl);
+	if (ret < 0) {
+		CAM_ERR(CAM_SENSOR, "oplus_sensor_special_config failed ret:%d", ret);
+		return -EINVAL;
+	}
+#endif
 	rc = camera_io_dev_read(
 		&(s_ctrl->io_master_info),
 		slave_info->sensor_id_reg_addr,
 		&chipid, s_ctrl->sensor_probe_addr_type,
 		s_ctrl->sensor_probe_data_type, true);
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	oplus_get_sensor_gpio_status(s_ctrl);
+#endif
 	CAM_DBG(CAM_SENSOR, "%s read id: 0x%x expected id 0x%x:",
 		s_ctrl->sensor_name, chipid, slave_info->sensor_id);
 
@@ -1434,6 +1444,10 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 		CAM_WARN(CAM_SENSOR, "%s read id: 0x%x expected id 0x%x:",
 				s_ctrl->sensor_name, chipid,
 				slave_info->sensor_id);
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		char fb_payload[PAYLOAD_LENGTH] = {0};
+		KEVENT_FB_SNESOR_PROBE_FAILED(fb_payload, "sensor match failed", slave_info->sensor_id);
+#endif
 		return -ENODEV;
 	}
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
@@ -2206,6 +2220,9 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 	struct cam_camera_slave_info   *slave_info;
 	struct cam_hw_soc_info         *soc_info = &s_ctrl->soc_info;
 	struct completion              *i3c_probe_completion = NULL;
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int ret = 0;
+#endif
 
 	if (!s_ctrl) {
 		CAM_ERR(CAM_SENSOR, "failed: %pK", s_ctrl);
@@ -2298,7 +2315,83 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 		s_ctrl->io_master_info.qup_client->i3c_wait_for_hotjoin = true;
 	}
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (s_ctrl->is_io_extension_sensor)
+	{
+		ret = gpio_request(s_ctrl->rst_gpio + GPIO_DYNAMIC_BASE, "reset_input");
+		if (ret < 0)
+		{
+			CAM_ERR(CAM_SENSOR, "gpio_request fail");
+		}
+		else
+		{
+			if (gpio_direction_input(s_ctrl->rst_gpio + GPIO_DYNAMIC_BASE))
+			{
+				CAM_INFO(CAM_SENSOR, "gpio_direction_input fail");
+			}
+			else
+			{
+				CAM_ERR(CAM_SENSOR, "before power up gpio value %d", gpio_get_value_cansleep(s_ctrl->rst_gpio + GPIO_DYNAMIC_BASE));
+			}
+		}
+	}
+#endif
+
 	rc = cam_sensor_core_power_up(power_info, soc_info, i3c_probe_completion);
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (s_ctrl->is_io_extension_sensor)
+	{
+		if (ret == 0)
+		{
+
+			int i = 0, j = 0;
+			int power_result = 0;
+
+			for (i = 0; !gpio_get_value_cansleep(s_ctrl->rst_gpio + GPIO_DYNAMIC_BASE) && i < 200; i++)
+			{
+				usleep_range(2000, 2010);
+			}
+
+			if(i == 200)
+			{
+				power_result = cam_sensor_util_power_down(power_info, soc_info);
+				if (power_result < 0)
+				{
+					CAM_ERR(CAM_SENSOR, "core power down failed:%d", power_result);
+				}
+
+				usleep_range(20000, 20010);
+
+				power_result = cam_sensor_core_power_up(power_info, soc_info, i3c_probe_completion);
+				if (power_result < 0)
+				{
+					CAM_ERR(CAM_SENSOR, "core power up failed:%d", power_result);
+				}
+
+				for (j = 0; !gpio_get_value_cansleep(s_ctrl->rst_gpio + GPIO_DYNAMIC_BASE) && j < 200; j++)
+				{
+					usleep_range(2000, 2010);
+				}
+			}
+
+			if (i < 200 || j < 200)
+			{
+				CAM_INFO(CAM_SENSOR, "after power up gpio value %d, delay %d ms",
+					gpio_get_value_cansleep(s_ctrl->rst_gpio + GPIO_DYNAMIC_BASE), 2 * i + 2 * j);
+				usleep_range(11250, 11300);
+				CAM_INFO(CAM_SENSOR, "sleep before i2c transaction");
+			}
+			else
+			{
+				CAM_ERR(CAM_SENSOR, "GPIO never went HIGH after 1 retries");
+			}
+		}
+		if (ret == 0)
+			gpio_free(s_ctrl->rst_gpio + GPIO_DYNAMIC_BASE);
+	}
+#endif
+
 	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "core power up failed:%d", rc);
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
@@ -2562,12 +2655,16 @@ int cam_sensor_apply_settings(struct cam_sensor_ctrl_t *s_ctrl,
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 				oplus_sensor_ov_bypass_framedrop(s_ctrl,opcode,i2c_list);
 				oplus_sensor_sony_bypass_vsync(s_ctrl,i2c_list);
+				oplus_get_sensor_gpio_status(s_ctrl);
 #endif
 				if (!s_ctrl->hw_no_ops)
 					rc = cam_sensor_i2c_modes_util(
 						&(s_ctrl->io_master_info),
 						i2c_list);
 				if (rc < 0) {
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+					oplus_get_sensor_gpio_status(s_ctrl);
+#endif
 					CAM_ERR(CAM_SENSOR,
 						"Failed to apply settings: %d",
 						rc);

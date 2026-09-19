@@ -16153,10 +16153,12 @@ static void cam_ife_mgr_dump_pf_data(
 			break;
 	}
 
-	if (g_ife_hw_mgr.hw_pid_support && (i == ctx->num_base || !*ctx_found))
+	if (g_ife_hw_mgr.hw_pid_support && (i == ctx->num_base || !*ctx_found)) {
 		CAM_INFO(CAM_ISP,
 			"This context does not cause pf:pid:%d ctx_id:%u",
 			pf_args->pf_smmu_info->pid, ctx->ctx_index);
+		return;
+	}
 
 pf_dump:
 	cam_ife_mgr_pf_dump(ctx);
@@ -17255,6 +17257,7 @@ static int cam_ife_hw_mgr_trigger_err_on_no_fault_ctx(
 	return rc;
 }
 
+
 /*
  * This function checks if any of the valid entry in affected_core[]
  * is associated with this context. if YES
@@ -17864,7 +17867,7 @@ static int cam_ife_hw_mgr_handle_sfe_hw_dump_info(
 	list_for_each_entry(hw_mgr_res,
 		&ife_hw_mgr_ctx->res_list_ife_in_rd, list) {
 		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			if (!hw_mgr_res->hw_res[i])
+			if (!hw_mgr_res || !hw_mgr_res->hw_res[i])
 				continue;
 			rsrc_node = hw_mgr_res->hw_res[i];
 			if ((event_info->res_type == CAM_ISP_RESOURCE_SFE_RD) &&

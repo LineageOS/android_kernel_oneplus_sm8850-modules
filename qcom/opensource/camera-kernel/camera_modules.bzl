@@ -73,6 +73,7 @@ def _define_module(target, variant):
             modules_label("qcom/opensource/securemsm-kernel:{}_smmu_proxy_dlkm".format(tv)),
 			modules_label("qcom/opensource/mmrm-driver:{}_mmrm_driver".format(tv)),
             modules_label("oplus/kernel/dft/bazel:oplus_bsp_dft_kernel_fb"),
+            modules_label("oplus/kernel/dft/bazel:oplus_bsp_dft_olc"),
         ])
     ddk_module(
         name = "{}_camera".format(tv),

@@ -257,6 +257,9 @@ static bool cam_ife_csid_ver2_disable_sof_retime(
 	if (path_data->path_cfg.sfe_shdr || path_data->path_cfg.lcr_en)
 		return true;
 
+	if (res->res_id == CAM_IFE_PIX_PATH_RES_RDI_1)
+		return true;
+
 	if (csid_hw->flags.rdi_lcr_en && res->res_id == CAM_IFE_PIX_PATH_RES_PPP)
 		return true;
 
@@ -2326,6 +2329,9 @@ static int cam_ife_csid_ver2_rx_err_process_bottom_half(
 				"UNBOUNDED_FRAME: Frame started with EOF or No EOF");
 			CAM_ERR(CAM_ISP, "CSID[%u] Fatal Errors: %s",
 				csid_hw->hw_intf->hw_idx, log_buf);
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			KEVENT_FB_FRAME_ERROR(fb_payload, "UNBOUNDED FRAME", (csid_hw->rx_cfg.phy_sel - 1));
+#endif
 		}
 
 		len = 0;
@@ -3883,6 +3889,11 @@ static void cam_ife_csid_ver2_dump_imp_regs(
 	soc_info = &csid_hw->hw_info->soc_info;
 	mem_base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
 	hw_idx = csid_hw->hw_intf->hw_idx;
+
+	if (hw_idx > CAM_CESTA_MAX_CLIENTS) {
+		CAM_ERR(CAM_ISP, "CSID[%u] out of bound, return...", hw_idx);
+		return;
+	}
 
 	/* Dumping CSID top irq registers */
 	top_irq_val[0] = cam_io_r_mb(mem_base +

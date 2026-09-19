@@ -45,4 +45,7 @@ void oplus_sensor_sony_get_vsync_data(struct device_node *of_node,struct sensor_
 int cam_sensor_match_id_oem(struct cam_sensor_ctrl_t *s_ctrl,uint32_t chip_id);
 
 int32_t cam_sensor_update_id_info(struct cam_cmd_probe_v2 *probe_info, struct cam_sensor_ctrl_t *s_ctrl);
+
+void oplus_get_sensor_gpio_status(struct cam_sensor_ctrl_t *s_ctrl);
+int oplus_sensor_special_config(struct cam_sensor_ctrl_t *s_ctrl);
 #endif /* _OPLUS_CAM_SENSOR_H_ */

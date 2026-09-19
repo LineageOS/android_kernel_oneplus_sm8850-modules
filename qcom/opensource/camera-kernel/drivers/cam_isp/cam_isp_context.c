@@ -3390,12 +3390,27 @@ static int __cam_isp_ctx_handle_buf_done_verify_addr(
 	bool irq_delay_detected = false;
 	struct cam_ctx_request *req;
 	struct cam_ctx_request *next_req = NULL;
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	struct cam_isp_ctx_req *req_isp;
+#endif
 	struct cam_context *ctx = ctx_isp->base;
 
 	if (list_empty(&ctx->active_req_list)) {
 		return __cam_isp_ctx_check_deferred_buf_done(
 			ctx_isp, done, bubble_state);
 	}
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (!list_empty(&ctx->wait_req_list)) {
+		req = list_first_entry(&ctx->wait_req_list, struct cam_ctx_request, list);
+		req_isp = (struct cam_isp_ctx_req *) req->req_priv;
+		if (__cam_isp_ctx_check_buf_done_match_for_request(ctx_isp,
+			req_isp, done, ctx_isp->frmhdr_verify_buf_done)) {
+			return __cam_isp_ctx_check_deferred_buf_done(
+				ctx_isp, done, bubble_state);
+		}
+	}
+#endif
 
 	req = list_first_entry(&ctx->active_req_list,
 			struct cam_ctx_request, list);
@@ -8110,9 +8125,13 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 		}
 		cam_isp_ctx_worker_unlock(ctx);
 
+		if (ctx_isp->num_inits_post_flush > 0)
+			ctx_isp->num_inits_post_flush--;
+
 		CAM_WARN(CAM_ISP,
-			"last flushed req is %lld, config dev(init) for req %lld, ctx_idx: %u, link: 0x%x",
-			ctx->last_flush_req, packet->header.request_id, ctx->ctx_id, ctx->link_hdl);
+			"last flushed req is %lld, config dev(init) for req %lld, ctx_idx: %u, link: 0x%x, post[%d]",
+			ctx->last_flush_req, packet->header.request_id, ctx->ctx_id, ctx->link_hdl,
+			ctx_isp->num_inits_post_flush);
 		rc = -EBADR;
 		goto free_packet;
 	}
@@ -8228,8 +8247,10 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 			else
 				ctx_isp->resume_hw_in_flushed = false;
 
-			if (ctx->state == CAM_CTX_FLUSHED)
+			if (ctx->state == CAM_CTX_FLUSHED) {
 				ctx_isp->num_inits_post_flush++;
+				CAM_INFO(CAM_ISP, "init packet in flushed [%d]", ctx_isp->num_inits_post_flush);
+			}
 		} else {
 			rc = -EINVAL;
 			CAM_ERR(CAM_ISP, "Received INIT pkt in wrong state:%d, ctx:%u, link:0x%x",
@@ -8288,8 +8309,8 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 		cam_isp_ctx_dump_req(req_isp, 0, 0, NULL, false);
 
 	CAM_DBG(CAM_REQ|CAM_ISP,
-		"Preprocessing Config req_id %lld successful on ctx %u, link: 0x%x",
-		req->request_id, ctx->ctx_id, ctx->link_hdl);
+		"Preprocessing Config req_id %lld successful on ctx %u, link: 0x%x, init_post: [%d]",
+		req->request_id, ctx->ctx_id, ctx->link_hdl, ctx_isp->num_inits_post_flush);
 
 	if (ctx_isp->offline_context && atomic_read(&ctx_isp->rxd_epoch))
 		__cam_isp_ctx_schedule_apply_req(ctx_isp);
@@ -9426,10 +9447,11 @@ static int __cam_isp_ctx_config_dev_in_flushed(struct cam_context *ctx,
 		goto end;
 	}
 
-	CAM_DBG(CAM_ISP, "vfps_ctx:%s resume_hw_in_flushed:%d ctx:%u link: 0x%x",
+	CAM_DBG(CAM_ISP, "vfps_ctx:%s resume_hw_in_flushed:%d ctx:%u link: 0x%x, post_flush[%d]",
 		CAM_BOOL_TO_YESNO(ctx_isp->vfps_aux_context),
 		ctx_isp->resume_hw_in_flushed,
-		ctx->ctx_id, ctx->link_hdl);
+		ctx->ctx_id, ctx->link_hdl,
+		ctx_isp->num_inits_post_flush);
 
 	if (ctx_isp->vfps_aux_context) {
 		/* Resume the HW only when we get first valid req */

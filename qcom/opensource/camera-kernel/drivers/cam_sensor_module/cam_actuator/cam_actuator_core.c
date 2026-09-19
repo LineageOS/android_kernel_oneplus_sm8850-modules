@@ -188,6 +188,37 @@ static int32_t cam_actuator_power_down(struct cam_actuator_ctrl_t *a_ctrl)
 		CAM_INFO(CAM_ACTUATOR, "actuator: %s power down, need pull down gpio:%d", a_ctrl->actuator_name, a_ctrl->pull_gpio);
 		gpio_set_value_cansleep(a_ctrl->pull_gpio + GPIO_DYNAMIC_BASE, GPIOF_OUT_INIT_LOW);
 	}
+
+	if ((power_info->power_setting == NULL) &&
+		(power_info->power_down_setting == NULL)) {
+		CAM_INFO(CAM_ACTUATOR,"Using default power settings");
+		rc = oplus_cam_actuator_construct_default_power_setting(a_ctrl, power_info);
+		if (rc < 0) {
+			CAM_ERR(CAM_ACTUATOR,
+			"Construct default actuator power setting failed.");
+			return rc;
+		}
+
+		/* Parse and fill vreg params for power up settings */
+		rc = msm_camera_fill_vreg_params(
+			&a_ctrl->soc_info,
+			power_info->power_setting,
+			power_info->power_setting_size);
+		if (rc) {
+			CAM_ERR(CAM_ACTUATOR,
+			"failed to fill vreg params for power up rc:%d", rc);
+			return rc;
+		}
+		/* Parse and fill vreg params for power down settings*/
+		rc = msm_camera_fill_vreg_params(
+			&a_ctrl->soc_info,
+			power_info->power_down_setting,
+			power_info->power_down_setting_size);
+		if (rc) {
+			CAM_ERR(CAM_ACTUATOR,
+				"failed to fill vreg params power down rc:%d", rc);
+		}
+	}
 #endif
 	rc = cam_sensor_util_power_down(power_info, soc_info);
 	if (rc) {
@@ -1407,6 +1438,12 @@ release_mutex:
 	cam_sensor_util_release_read_buf(&(a_ctrl->read_buf_list));
 	mutex_unlock(&(a_ctrl->actuator_mutex));
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	char fb_payload[PAYLOAD_LENGTH] = {0};
+	if (rc < 0) {
+		KEVENT_FB_ACTUATOR_CTL_FAILED(fb_payload, "actuator control error", rc);
+	}
+#endif
 	return rc;
 }
 

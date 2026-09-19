@@ -46,6 +46,9 @@
 #include "cam_icp_proc.h"
 #include "cam_worker_wrapper_api.h"
 #include "cam_cpas_hw_intf.h"
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "cam_kevent_fb_custom.h"
+#endif
 
 #define ICP_DEVICE_IDLE_TIMEOUT 400
 
@@ -6314,6 +6317,10 @@ static int cam_icp_mgr_send_config_io(struct cam_icp_hw_ctx_data *ctx_data,
 			"%s: FW response timeout for send IO cfg handle command on",
 			ctx_data->ctx_id_string);
 	if (!rem_jiffies) {
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		char fb_payload[PAYLOAD_LENGTH] = {0};
+		KEVENT_FB_FRAME_ERROR(fb_payload, "FW response timeout", ctx_data->ctx_id);
+#endif
 		/* send specific error for io config failure */
 		rc = -EREMOTEIO;
 		cam_icp_dump_debug_info(hw_mgr, false);

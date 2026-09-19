@@ -13,6 +13,9 @@
 #include "cam_common_util.h"
 #include "cam_packet_util.h"
 #include "cam_mem_mgr_api.h"
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "cam_kevent_fb_custom.h"
+#endif
 
 #define MAX_READ_SIZE  0x7FFFF
 
@@ -110,6 +113,10 @@ static int cam_eeprom_read_memory(struct cam_eeprom_ctrl_t *e_ctrl,
 				emap[j].mem.data_type,
 				emap[j].mem.valid_size);
 			if (rc < 0) {
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+				char fb_payload[PAYLOAD_LENGTH] = {0};
+				KEVENT_FB_EEPRPOM_WR_FAILED(fb_payload, "camera eeprom read failed", rc);
+#endif
 				CAM_ERR(CAM_EEPROM, "read failed rc %d",
 					rc);
 				return rc;

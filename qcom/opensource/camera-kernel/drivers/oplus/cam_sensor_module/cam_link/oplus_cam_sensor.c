@@ -625,3 +625,82 @@ int cam_sensor_match_id_oem(struct cam_sensor_ctrl_t *s_ctrl,uint32_t chip_id)
 	}
 	return 0;
 }
+
+void oplus_get_sensor_gpio_status(struct cam_sensor_ctrl_t *s_ctrl)
+{
+	int gpio_value;
+
+	if(s_ctrl->is_io_extension_sensor && s_ctrl->rst_gpio != -1)
+	{
+		gpio_value = gpio_get_value_cansleep(s_ctrl->rst_gpio + GPIO_DYNAMIC_BASE);
+		if(gpio_value)
+		{
+			CAM_INFO(CAM_SENSOR, "IoExtension Sensor RESET GPIO is HIGH, %d",gpio_value);
+		}
+		else
+		{
+			CAM_INFO(CAM_SENSOR, "IoExtension Sensor RESET GPIO is LOW, %d",gpio_value);
+		}
+	}
+}
+
+// Sensor-specific configuration function (for sensor ID 0x38e5)
+int oplus_sensor_special_config(struct cam_sensor_ctrl_t *s_ctrl)
+{
+    struct cam_camera_slave_info *slave_info;
+
+    if (!s_ctrl || !s_ctrl->sensordata)
+        return -EINVAL;
+
+    slave_info = &s_ctrl->sensordata->slave_info;
+    // Check if the sensor ID is 0x38e5
+    if ((slave_info->sensor_id == 0x38e5) && (s_ctrl->is_need_clk_stretch == 1))
+    {
+        // Set I2C write register array
+        struct cam_sensor_i2c_reg_array i2c_write_setting = {
+            .reg_addr = 0x6034,
+            .reg_data = 0x0001,
+            .delay = 5,
+            .data_mask = 0x00,
+        };
+
+        // Create I2C write configuration structure
+        struct cam_sensor_i2c_reg_setting probe_first = {
+            .reg_setting = &i2c_write_setting,
+            .size = 1,
+            .addr_type = CAMERA_SENSOR_I2C_TYPE_WORD,
+            .data_type = CAMERA_SENSOR_I2C_TYPE_WORD,
+            .delay = 0x00,
+        };
+
+        int ret = 0;
+        CAM_INFO(CAM_SENSOR, "front write 0x%x, val: 0x%x",
+                i2c_write_setting.reg_addr, i2c_write_setting.reg_data);
+        ret = camera_io_dev_write(&(s_ctrl->io_master_info), &probe_first);
+        if (ret < 0) {
+            CAM_ERR(CAM_SENSOR, "Failed to write probe_first 0x6034: %d", ret);
+            return ret;
+        }
+        // Verify whether the register was written correctly start
+        uint32_t read_value = 0;
+        int res = 0;
+        res = camera_io_dev_read(
+            &(s_ctrl->io_master_info),
+            i2c_write_setting.reg_addr,
+            &read_value,
+            probe_first.addr_type,
+            probe_first.data_type,
+            true);
+        if (res < 0) {
+            CAM_ERR(CAM_SENSOR, "read 0x%x failed, Err: %d",
+                   i2c_write_setting.reg_addr, res);
+            return res;
+        } else {
+            CAM_INFO(CAM_SENSOR, "read 0x%x succses, value: 0x%x",
+                    i2c_write_setting.reg_addr, read_value);
+        }
+        // Verify whether the register was written correctly end
+        return ret;
+    }
+    return 0;
+}

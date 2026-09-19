@@ -14,6 +14,7 @@ common_configs = [
 	"CONFIG_SPECTRA_DMABUF_GET_FLAGS=y",
 	"CONFIG_SPECTRA_SOC_QCOM_SOCINFO=y",
 	"CONFIG_SPECTRA_OPLUS=y",
+	"CONFIG_OPLUS_FEATURE_OLC=y",
 ]
 
 dependency_config = [
