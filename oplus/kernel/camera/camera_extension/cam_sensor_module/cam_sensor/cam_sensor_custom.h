@@ -89,4 +89,6 @@ int cam_ext_read_reg(struct cam_sensor_ctrl_t *s_ctrl,
 
 int cam_get_sensor_reg_otp(struct cam_sensor_ctrl_t *s_ctrl);
 
+void cam_get_sensor_gpio_status(struct cam_sensor_ctrl_t *s_ctrl);
+
 #endif /* _CAM_SENSOR_CUSTOM_H_ */

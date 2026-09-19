@@ -173,8 +173,11 @@ int cam_ext_sensor_start_thread(void *arg)
 
 	mutex_lock(&g_power_in_advance_lock);
 	mutex_lock(&(s_ctrl->cam_sensor_mutex));
+	cam_get_sensor_gpio_status(s_ctrl);
 	//power up for sensor
 	rc = cam_sensor_power_up(s_ctrl);
+
+	cam_get_sensor_gpio_status(s_ctrl);
 
 	if (!rc) {
 		oplus_cam_monitor_state(s_ctrl,
@@ -191,6 +194,8 @@ int cam_ext_sensor_start_thread(void *arg)
 		{
 			trace_begin("initsettings size:%u", s_ctrl->sensor_init_setting.size);
 			CAM_EXT_ERR(CAM_EXT_SENSOR, "Enter CAM_SENSOR_SETTING_WRITE_INVALID!");
+			cam_get_sensor_gpio_status(s_ctrl);
+
 			if (s_ctrl->is_surpport_wr_continuous == TRUE)
 			{
 				rc = cam_ext_sensor_write_continuous(s_ctrl);
@@ -200,10 +205,37 @@ int cam_ext_sensor_start_thread(void *arg)
 				rc = camera_io_dev_write(&(s_ctrl->io_master_info),
 					&(s_ctrl->sensor_init_setting));
 			}
+
+			cam_get_sensor_gpio_status(s_ctrl);
 			CAM_EXT_ERR(CAM_EXT_SENSOR, "Enter CAM_SENSOR_SETTING_WRITE_INVALID Done!");
 			if(rc < 0)
 			{
-				CAM_EXT_ERR(CAM_EXT_SENSOR, "write setting failed!");
+				CAM_EXT_ERR(CAM_EXT_SENSOR, "write setting failed! retry");
+				mutex_unlock(&(s_ctrl->sensor_initsetting_mutex));
+				usleep_range(1000, 1010);
+				rc = cam_sensor_power_down(s_ctrl);
+				if (!rc)
+					rc = cam_sensor_power_up(s_ctrl);
+				mutex_lock(&(s_ctrl->sensor_initsetting_mutex));
+				if (!rc && s_ctrl->is_surpport_wr_continuous == TRUE)
+				{
+					rc = cam_ext_sensor_write_continuous(s_ctrl);
+				}
+				else if (!rc)
+				{
+					rc = camera_io_dev_write(&(s_ctrl->io_master_info),
+						&(s_ctrl->sensor_init_setting));
+				}
+
+				if(rc < 0)
+				{
+					CAM_EXT_ERR(CAM_EXT_SENSOR, "write setting failed! retry failed!");
+				}
+				else
+				{
+					CAM_EXT_INFO(CAM_EXT_SENSOR, "retry write setting success!");
+					s_ctrl->sensor_initsetting_state = CAM_SENSOR_SETTING_WRITE_SUCCESS;
+				}
 			}
 			else
 			{
@@ -808,6 +840,7 @@ int32_t cam_ext_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 	bool power_up_process = false;
 	struct iio_channel* therm_channel;
 	int therm_val = -EINVAL;
+	struct cam_oem_sensor_info m_oem_sensor_info = {0};
 
 	if (!s_ctrl || !arg) {
 		CAM_EXT_ERR(CAM_EXT_SENSOR, "s_ctrl is NULL");
@@ -825,7 +858,9 @@ int32_t cam_ext_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 	mutex_lock(&(s_ctrl->cam_sensor_mutex));
 	switch (cmd->op_code) {
 		case CAM_OEM_GET_ID : {
-			if (copy_to_user((void __user *)cmd->handle,&s_ctrl->soc_info.index, sizeof(uint32_t))) {
+			m_oem_sensor_info.cam_id = s_ctrl->soc_info.index;
+			strncpy(m_oem_sensor_info.sensorName, s_ctrl->sensor_name, sizeof(s_ctrl->sensor_name));
+			if (copy_to_user((void __user *)cmd->handle, &m_oem_sensor_info, sizeof(m_oem_sensor_info))) {
 				CAM_EXT_ERR(CAM_EXT_SENSOR, "copy camera id to user fail ");
 			}
 			break;
@@ -950,6 +985,8 @@ int32_t cam_ext_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			goto free_power_settings;
 		}
 
+		cam_get_sensor_gpio_status(s_ctrl);
+
 		/* Power up and probe sensor */
 		rc = cam_sensor_power_up(s_ctrl);
 		if (rc < 0) {
@@ -980,15 +1017,15 @@ int32_t cam_ext_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 		}
 
 		oplus_cam_sensor_match_id_pre(s_ctrl);
-
+		cam_get_sensor_gpio_status(s_ctrl);
 		/* Match sensor ID */
 		rc = cam_sensor_match_id(s_ctrl);
+		cam_get_sensor_gpio_status(s_ctrl);
 
 		memset(s_ctrl->cam_sensor_reg_otp, 0, sizeof(s_ctrl->cam_sensor_reg_otp));
 		if (!rc){
 			cam_get_sensor_reg_otp(s_ctrl);
 		}
-
 		if (!rc) {
 			oplus_cam_sensor_match_id_post(
 				cmd->handle, cmd->op_code, s_ctrl, &rc);
@@ -1287,7 +1324,9 @@ free_power_settings:
 		case CAM_GET_TEMPERATURE:{
 			if (s_ctrl->sensor_power_state == CAM_SENSOR_POWER_ON)
 			{
-				therm_channel = iio_channel_get(&(s_ctrl->pdev->dev), "pmk8550_gpio03_therm_channel");
+				therm_channel = iio_channel_get(&(s_ctrl->pdev->dev), "pmk8850_gpio05_therm_channel");
+				if (IS_ERR(therm_channel) && PTR_ERR(therm_channel) != -EPROBE_DEFER)
+					therm_channel = iio_channel_get(&(s_ctrl->pdev->dev), "pmk8550_gpio03_therm_channel");
 				if (NULL == therm_channel || IS_ERR(therm_channel))
 				{
 					rc = -EINVAL;
@@ -1339,6 +1378,30 @@ void cam_ext_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
 	if ( rc < 0) {
 		CAM_EXT_WARN(CAM_EXT_SENSOR, "Invalid sensor params");
 		s_ctrl->is_support_laser = 0;
+	}
+
+	rc = of_property_read_u32(of_node, "is_io_extension_sensor",
+		&s_ctrl->is_io_extension_sensor);
+	if ( rc < 0)
+	{
+		CAM_EXT_WARN(CAM_EXT_SENSOR, "is_io_extension_sensor  Invalid sensor params");
+		s_ctrl->is_io_extension_sensor = 0;
+	}
+	else
+	{
+		CAM_EXT_INFO(CAM_EXT_SENSOR, "is_io_extension_sensor = %d",s_ctrl->is_io_extension_sensor);
+	}
+
+	rc = of_property_read_u32(of_node, "rst_gpio",
+		&s_ctrl->rst_gpio);
+	if ( rc < 0)
+	{
+		CAM_EXT_WARN(CAM_EXT_SENSOR, "rst_gpio  Invalid sensor params");
+		s_ctrl->rst_gpio = -1;
+	}
+	else
+	{
+		CAM_EXT_INFO(CAM_EXT_SENSOR, "rst_gpio = %d",s_ctrl->rst_gpio);
 	}
 
 	rc = of_property_read_u32(of_node, "enable_qsc_write_in_advance",
@@ -1443,8 +1506,22 @@ void cam_ext_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
 	}
 	else
 	{
-		CAM_EXT_INFO(CAM_EXT_SENSOR, "read sensor_setting_id success, value:%d",
+		CAM_EXT_INFO(CAM_EXT_SENSOR, "read is_need_dropframe success, value:%d",
 			s_ctrl->is_need_framedrop);
+	}
+
+	rc = of_property_read_u32(of_node, "is_need_clk_stretch",
+			&s_ctrl->is_need_clk_stretch);
+	if (rc < 0)
+	{
+		s_ctrl->is_need_clk_stretch = 0;
+		CAM_EXT_WARN(CAM_EXT_SENSOR, "get is_need_clk_stretch failed rc:%d, default %d",
+			rc, s_ctrl->is_need_clk_stretch);
+	}
+	else
+	{
+		CAM_EXT_INFO(CAM_EXT_SENSOR, "read is_need_clk_stretch success, value:%d",
+			s_ctrl->is_need_clk_stretch);
 	}
 
 	rc = of_property_read_bool(of_node, "need-write-probe-register");
@@ -1736,4 +1813,22 @@ int cam_get_sensor_reg_otp(struct cam_sensor_ctrl_t *s_ctrl)
 	memcpy(s_ctrl->cam_sensor_reg_otp+sizeof(data_size), temp_arr, data_size);
 
 	return rc;
+}
+
+void cam_get_sensor_gpio_status(struct cam_sensor_ctrl_t *s_ctrl)
+{
+	int gpio_value;
+
+	if(s_ctrl->is_io_extension_sensor && s_ctrl->rst_gpio != -1)
+	{
+		gpio_value = gpio_get_value_cansleep(s_ctrl->rst_gpio + GPIO_DYNAMIC_BASE);
+		if(gpio_value)
+		{
+			CAM_EXT_INFO(CAM_EXT_SENSOR, "IoExtension Sensor RESET GPIO is HIGH, %d",gpio_value);
+		}
+		else
+		{
+			CAM_EXT_INFO(CAM_EXT_SENSOR, "IoExtension Sensor RESET GPIO is LOW, %d",gpio_value);
+		}
+	}
 }

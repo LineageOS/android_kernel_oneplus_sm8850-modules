@@ -82,6 +82,14 @@ static long cam_actuator_ioctl(struct v4l2_subdev *sd,
 		rc = oplus_cam_actuator_unlock(a_ctrl);
 		cam_ext_cmd = true;
 		break;
+	case VIDIOC_CAM_ACTUATOR_SET_MODE:
+		rc = oplus_vcm_set_mode(a_ctrl, arg);
+		cam_ext_cmd = true;
+		break;
+	case VIDIOC_CAM_ACTUATOR_MOVE_FOCUS:
+		rc = oplus_cam_move_focus(a_ctrl, arg);
+		cam_ext_cmd = true;
+		break;
 	case CAM_SD_SHUTDOWN:
 		if (!cam_req_mgr_is_shutdown()) {
 			CAM_EXT_ERR(CAM_EXT_ACTUATOR, "SD shouldn't come from user space");
@@ -1406,6 +1414,124 @@ int32_t oplus_cam_actuator_lock(struct cam_actuator_ctrl_t *a_ctrl)
 	}
 	mutex_unlock(&(a_ctrl->actuator_mutex));
 	return rc;
+}
+
+bool oplus_actuator_is_busy(struct cam_actuator_ctrl_t *a_ctrl)
+{
+    bool busy_status = false;
+    int rc = 0;
+    uint32_t read_data = 0;
+    uint32_t busy_register = 0x05;
+
+    rc = oplus_cam_actuator_ram_read_extend(a_ctrl, busy_register, &read_data, 1, 1);
+    if (rc == 0) {
+       CAM_EXT_INFO(CAM_EXT_ACTUATOR, "oplus_actuator_is_busy read addr: %x read_data: %d success)", busy_register, read_data);
+    } else {
+       CAM_EXT_ERR(CAM_EXT_ACTUATOR, "oplus_actuator_is_busy read addr: %x read_data: %d failed)", busy_register, read_data);
+       return true;
+    }
+    busy_status = (read_data & 0x01) ? true : false;
+    return busy_status;
+}
+
+int32_t oplus_vcm_set_mode(struct cam_actuator_ctrl_t *a_ctrl, void *arg)
+{
+    struct mode_info config;
+    if (copy_from_user(&config, (void __user *)arg, sizeof(config))) {
+        CAM_EXT_ERR(CAM_EXT_ACTUATOR, "Failed to copy from user");
+        return -EFAULT;
+    }
+    switch (config.mode) {
+    case ACTUATOR_MODE_DIRECT:
+        config.flag = oplus_actuator_mode(a_ctrl, 0, &config);
+        break;
+    case ACTUATOR_MODE_SAC3:
+        config.flag = oplus_actuator_mode(a_ctrl, 1, &config);
+        break;
+    default:
+        config.flag = 0;
+        CAM_EXT_ERR(CAM_EXT_ACTUATOR, "Invalid motor mode\n");
+        break;
+    }
+
+    return 0;
+}
+
+int32_t oplus_actuator_mode(struct cam_actuator_ctrl_t *a_ctrl , int32_t ring, struct mode_info *mode_info)
+{
+    int32_t rc = 0;
+    uint32_t read_ctrl_value = 0;
+    uint32_t write_ctrl_value = 0;
+    uint32_t mode_register = 0x02;
+    int32_t flag = false;
+
+    rc = oplus_cam_actuator_ram_read_extend(a_ctrl, mode_register, &read_ctrl_value, 1, 1);
+    if(rc != 0) {
+        CAM_EXT_ERR(CAM_EXT_ACTUATOR, "Failed to read mode_register: %x", mode_register);
+        return flag;
+    }
+
+    if(ring) {
+        write_ctrl_value = read_ctrl_value | (1 << 1); // ring:1
+    } else {
+        write_ctrl_value = read_ctrl_value & ~(1 << 1); // ring:0
+    }
+
+    mutex_lock(&(a_ctrl->actuator_mutex));
+    if(!oplus_actuator_is_busy(a_ctrl)) {
+        rc = oplus_cam_actuator_ram_write_extend(a_ctrl, mode_register, write_ctrl_value, 0, 1, 1);
+        if(rc < 0) {
+            CAM_EXT_ERR(CAM_EXT_ACTUATOR, "Failed to write  mode_register: %x", mode_register);
+            flag = false;
+        } else {
+            flag = true;
+        }
+    } else {
+        flag = false;
+        CAM_EXT_ERR(CAM_EXT_ACTUATOR, "busy status");
+    }
+    mutex_unlock(&(a_ctrl->actuator_mutex));
+
+    rc = oplus_cam_actuator_ram_read_extend(a_ctrl, mode_register, &read_ctrl_value, 1, 1);
+    CAM_EXT_ERR(CAM_EXT_ACTUATOR, "mode:%d, ring:%d, ctrl_value:0x%0x, flag:%d",
+        mode_info->mode, ring, read_ctrl_value, flag);
+    return flag;
+}
+
+int32_t oplus_cam_move_focus(struct cam_actuator_ctrl_t *a_ctrl , void *arg)
+{
+    int rc = 0;
+    uint32_t read_data = 0;
+    uint32_t dac_register = 0x03;
+    uint32_t *write_data = (uint32_t *)arg;
+    if(write_data == NULL) {
+        CAM_EXT_ERR(CAM_EXT_ACTUATOR, "Invalid Args");
+        return -EINVAL;
+    }
+
+    uint32_t lens_position = 0;
+
+    if (copy_from_user(&lens_position, (void __user *)arg, sizeof(lens_position))) {
+        return -EFAULT;
+    }
+
+    mutex_lock(&(a_ctrl->actuator_mutex));
+    rc = oplus_cam_actuator_ram_write_extend(a_ctrl, dac_register, lens_position, 0, 1, 2);
+    if (rc == 0) {
+       CAM_EXT_INFO(CAM_EXT_ACTUATOR, "oplus_cam_move_focus write addr:%x lens_position:%d success)", dac_register, lens_position);
+    } else {
+       CAM_EXT_ERR(CAM_EXT_ACTUATOR, "oplus_cam_move_focus write addr:%x lens_position:%d failed)", dac_register, lens_position);
+    }
+    mutex_unlock(&(a_ctrl->actuator_mutex));
+
+    rc = oplus_cam_actuator_ram_read_extend(a_ctrl, dac_register, &read_data, 1, 2);
+    if (rc == 0) {
+       CAM_EXT_INFO(CAM_EXT_ACTUATOR, "oplus_cam_move_focus read addr:%x read_data:%d success)", dac_register, read_data);
+    } else {
+       CAM_EXT_ERR(CAM_EXT_ACTUATOR, "oplus_cam_move_focus read addr:%x read_data:%d failed)", dac_register, read_data);
+    }
+
+    return rc;
 }
 
 int32_t oplus_cam_actuator_unlock(struct cam_actuator_ctrl_t *a_ctrl)

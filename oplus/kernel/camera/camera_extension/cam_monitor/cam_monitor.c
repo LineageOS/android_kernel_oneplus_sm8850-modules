@@ -810,6 +810,8 @@ void check_power_exception(struct monitor_check *r)
 	struct cam_subdev  *csd;
 	struct cam_sensor_ctrl_t *s_ctrl;
 	int i = 0;
+	int j = 0;
+	bool is_non_exclusive = false;
 
 	if (NULL == r)
 		return;
@@ -858,11 +860,30 @@ void check_power_exception(struct monitor_check *r)
 			s_ctrl = v4l2_get_subdevdata(&csd->sd);
 
 			for (i = 0; i < s_ctrl->soc_info.num_rgltr; i++) {
-				if (regulator_is_enabled(s_ctrl->soc_info.rgltr[i]) &&
-					(!strstr(s_ctrl->soc_info.rgltr[i]->rdev->desc->name,
-						"regulator-dummy") &&
-					 !strstr(s_ctrl->soc_info.rgltr[i]->rdev->desc->name,
-						"cam_cc_titan_top_gdsc"))) {
+				if (strstr(s_ctrl->soc_info.rgltr[i]->rdev->desc->name,
+						"regulator-dummy") ||
+					strstr(s_ctrl->soc_info.rgltr[i]->rdev->desc->name,
+						"cam_cc_titan_top_gdsc")) {
+						continue;
+				}
+
+				is_non_exclusive = false;
+				for (j = 0; j < g_plat_priv->non_exclusive_rgltr_count; j++) {
+					if (g_plat_priv->non_exclusive_rgltr != NULL &&
+					    strstr(s_ctrl->soc_info.rgltr[i]->rdev->desc->name,
+								g_plat_priv->non_exclusive_rgltr[j])) {
+						is_non_exclusive = true;
+						break;
+					}
+				}
+
+				if (is_non_exclusive) {
+					CAM_EXT_INFO(CAM_EXT_UTIL, "Skip check non-exclusive regulator: %s",
+						s_ctrl->soc_info.rgltr[i]->rdev->desc->name);
+					continue;
+				}
+
+				if (regulator_is_enabled(s_ctrl->soc_info.rgltr[i])) {
 					r->count_enabled_regulator ++;
 					CAM_EXT_ERR(CAM_EXT_UTIL,
 						"Enabled regulator name:%s_%s: %s use_cont %d",

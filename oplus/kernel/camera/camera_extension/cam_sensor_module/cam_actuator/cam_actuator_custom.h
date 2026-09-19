@@ -24,6 +24,9 @@
 #define VIDIOC_CAM_ACTUATOR_UNLOCK 0x9004
 #define VIDIOC_CAM_ACTUATOR_SHAKE_DETECT_ENABLE 0x9005
 
+#define VIDIOC_CAM_ACTUATOR_SET_MODE 0x9006
+#define VIDIOC_CAM_ACTUATOR_MOVE_FOCUS 0x9007
+
 #define ACTUATOR_REGISTER_SIZE 10
 #define AK7316_DAC_ADDR 0x84
 
@@ -40,6 +43,22 @@ typedef struct {
     uint8_t check_addr;
     uint8_t check_bit;
 } actuator_control_info_t;
+
+struct mode_info {
+    int32_t mode;
+    int32_t flag;
+};
+
+enum ACTUATOR_MODE {
+    ACTUATOR_MODE_INVALID = -1,
+    ACTUATOR_MODE_DIRECT = 0,
+    ACTUATOR_MODE_LSC = 1,
+    ACTUATOR_MODE_SAC2 = 2,
+    ACTUATOR_MODE_SAC3 = 3,
+    ACTUATOR_MODE_SAC4 = 4,
+    ACTUATOR_MODE_SAC5 = 5,
+    ACTUATOR_MODE_MAX,
+};
 
 int32_t oplus_cam_actuator_parse_dt(struct cam_actuator_ctrl_t *a_ctrl);
 
@@ -58,6 +77,11 @@ int oplus_cam_actuator_update_pid(void *arg);
 void oplus_cam_actuator_sds_enable(struct cam_actuator_ctrl_t *a_ctrl);
 int32_t oplus_cam_actuator_lock(struct cam_actuator_ctrl_t *a_ctrl);
 int32_t oplus_cam_actuator_unlock(struct cam_actuator_ctrl_t *a_ctrl);
+int32_t oplus_actuator_mode(struct cam_actuator_ctrl_t *a_ctrl , int32_t ring, struct mode_info *mode_info);
+int32_t oplus_vcm_set_mode(struct cam_actuator_ctrl_t *a_ctrl, void *arg);
+int32_t oplus_cam_move_focus(struct cam_actuator_ctrl_t *a_ctrl , void *arg);
+bool oplus_actuator_is_busy(struct cam_actuator_ctrl_t *a_ctrl);
+
 int oplus_cam_actuator_ram_write_extend(struct cam_actuator_ctrl_t *a_ctrl,
 	uint32_t addr, uint32_t data,unsigned short mdelay,
 	enum camera_sensor_i2c_type addr_type,

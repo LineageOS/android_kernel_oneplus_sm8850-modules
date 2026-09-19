@@ -20,6 +20,8 @@
 #define         WRITE_SEM1217_EEPROM_BASE_ADDRESS  0xC000
 #define         EEPROM_FUNCTION_OV64B40_SEM1217S  1
 #define         EEPROM_FUNCTION_IMX766_FM24C256E  2
+#define         UINT32_MAX              0xFFFFFFFF
+#define         INVALID_DATA            UINT32_MAX
 
 uint64_t        total_size=0;
 bool chip_version_old = FALSE;
@@ -456,10 +458,12 @@ int32_t EEPROM_CommonWrite(struct cam_eeprom_ctrl_t *e_ctrl,
 	struct cam_write_eeprom_t *cam_write_eeprom) {
 	int i = 0;
 	int j = 0;
-	uint32_t readcalibData;
+	uint32_t readcalibData = 0;
 	int32_t  rc = 0;
+	int32_t write_rc = 0;
 	uint32_t    star_addr = 0x0000;
 	int32_t  m_eeprom_size;
+	uint16_t sid = e_ctrl->io_master_info.cci_client->sid;
 	struct cam_sensor_i2c_reg_setting  i2c_reg_settings;
 	struct cam_sensor_i2c_reg_array    i2c_reg_arrays[WRITE_EEPROM_MAX_LENGTH];
 	struct cam_sensor_i2c_reg_array    i2c_reg_array;
@@ -468,95 +472,157 @@ int32_t EEPROM_CommonWrite(struct cam_eeprom_ctrl_t *e_ctrl,
 	i2c_reg_settings.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
 	i2c_reg_settings.delay = WRITE_DATA_DELAY;
 
-	CAM_EXT_INFO(CAM_EXT_EEPROM,"entry write eeprom");
+	CAM_EXT_INFO(CAM_EXT_EEPROM,"entry write eeprom: %s, camId: %u, isWRP: %u", cam_write_eeprom->eepromName, cam_write_eeprom->cam_id, cam_write_eeprom->isWRP);
 
 	//disable write protection
 	if (cam_write_eeprom->isWRP == 0x01) {
-		i2c_reg_settings.size = 1;
-	//new add WRPaddr and data in xml
-		i2c_reg_array.reg_addr = cam_write_eeprom->WRPaddr;
-		i2c_reg_array.reg_data = cam_write_eeprom->CloseWRP;
-
-		i2c_reg_array.delay = 0;
-		i2c_reg_settings.reg_setting = &i2c_reg_array;
-
-		rc = cam_ext_io_dev_read(e_ctrl->io_master_info.cci_client,
-			 i2c_reg_array.reg_addr, &readcalibData,
-			 CAMERA_SENSOR_I2C_TYPE_WORD,
-			 CAMERA_SENSOR_I2C_TYPE_BYTE, false);
-			 CAM_EXT_INFO(CAM_EXT_EEPROM,"cam_write_eeprom->eepromName :%s  set reg_data:0x%x cam reg_addr:0x%x, WRPaddr: 0x%x",  cam_write_eeprom->eepromName,i2c_reg_array.reg_data,i2c_reg_array.reg_addr,readcalibData);
-		if (rc) {
-			CAM_EXT_ERR(CAM_EXT_EEPROM,"read WRPaddr failed rc %d",rc);
-			return rc;
+		if (cam_write_eeprom->WRPSlaveID != INVALID_DATA)
+		{
+			e_ctrl->io_master_info.cci_client->sid = cam_write_eeprom->WRPSlaveID >> 1;
 		}
-
-		if (readcalibData != i2c_reg_array.reg_data) {
+		if (cam_write_eeprom->EnableWRPAddr != INVALID_DATA && cam_write_eeprom->EnableWRPData != INVALID_DATA)
+		{
+			i2c_reg_settings.size = 1;
+			i2c_reg_array.reg_addr = cam_write_eeprom->EnableWRPAddr;
+			i2c_reg_array.reg_data = cam_write_eeprom->EnableWRPData;
+			i2c_reg_array.delay = 0;
+			i2c_reg_settings.reg_setting = &i2c_reg_array;
 			rc = cam_ext_io_dev_write(e_ctrl->io_master_info.cci_client, &i2c_reg_settings);
 			if (rc) {
-				CAM_EXT_ERR(CAM_EXT_EEPROM,"write WRPaddr failed rc %d",rc);
-				return rc;
+				CAM_EXT_WARN(CAM_EXT_EEPROM,"EnableWRPData write fail, but maybe EnableWRP success, rc %d", rc);
+			}
+			i2c_reg_settings.size = 1;
+			//new add WRPaddr and data in xml
+			i2c_reg_array.reg_addr = cam_write_eeprom->WRPaddr;
+			i2c_reg_array.reg_data = cam_write_eeprom->CloseWRP;
+			i2c_reg_array.delay = 0;
+			i2c_reg_settings.reg_setting = &i2c_reg_array;
+			rc = cam_ext_io_dev_write(e_ctrl->io_master_info.cci_client, &i2c_reg_settings);
+			if (rc) {
+				CAM_EXT_ERR(CAM_EXT_EEPROM,"CloseWRP fail, rc %d", rc);
+			}
+		}
+		else
+		{
+			i2c_reg_settings.size = 1;
+			//new add WRPaddr and data in xml
+			i2c_reg_array.reg_addr = cam_write_eeprom->WRPaddr;
+			i2c_reg_array.reg_data = cam_write_eeprom->CloseWRP;
+
+			i2c_reg_array.delay = 0;
+			i2c_reg_settings.reg_setting = &i2c_reg_array;
+
+			rc = cam_ext_io_dev_read(e_ctrl->io_master_info.cci_client,
+				 i2c_reg_array.reg_addr, &readcalibData,
+				 CAMERA_SENSOR_I2C_TYPE_WORD,
+				 CAMERA_SENSOR_I2C_TYPE_BYTE, false);
+				 CAM_EXT_INFO(CAM_EXT_EEPROM,"cam_write_eeprom->eepromName :%s  set reg_data:0x%x cam reg_addr:0x%x, WRPaddr: 0x%x",  cam_write_eeprom->eepromName,i2c_reg_array.reg_data,i2c_reg_array.reg_addr,readcalibData);
+			if (rc) {
+				CAM_EXT_ERR(CAM_EXT_EEPROM,"read WRPaddr failed rc %d",rc);
 			}
 
-			CAM_EXT_INFO(CAM_EXT_EEPROM,"write!cam: WRPaddr: 0x%x", readcalibData);
-			msleep(30);
+			if (!rc && readcalibData != i2c_reg_array.reg_data) {
+				rc = cam_ext_io_dev_write(e_ctrl->io_master_info.cci_client, &i2c_reg_settings);
+				if (rc) {
+					CAM_EXT_ERR(CAM_EXT_EEPROM,"write WRPaddr failed rc %d",rc);
+				}
+
+				CAM_EXT_INFO(CAM_EXT_EEPROM,"write!cam: WRPaddr: 0x%x", readcalibData);
+				msleep(30);
+			}
 		}
+		e_ctrl->io_master_info.cci_client->sid = sid;
 	}
-	CAM_EXT_INFO(CAM_EXT_EEPROM,"write start, cam: ID: 0x%x, reg_addr: 0x%x, val: %d",
+
+	if (rc == 0)
+	{
+		CAM_EXT_INFO(CAM_EXT_EEPROM,"write start, cam: ID: 0x%x, reg_addr: 0x%x, firstval: 0x%x, dataSize: %u",
 				cam_write_eeprom->cam_id,
 				cam_write_eeprom->baseAddr,
-				cam_write_eeprom->calibData[0]);
+				cam_write_eeprom->calibData[0],
+				cam_write_eeprom->calibDataSize);
 
-	m_eeprom_size = cam_write_eeprom->calibDataSize;
-	for (i = 0; i < m_eeprom_size;) {
-		i2c_reg_settings.size = 0;
-		star_addr = (cam_write_eeprom->baseAddr + i);
-		for (j = 0; j < WRITE_EEPROM_MAX_LENGTH && i < m_eeprom_size; j++) {
-			i2c_reg_arrays[j].reg_addr = star_addr;
-			i2c_reg_arrays[j].reg_data = cam_write_eeprom->calibData[i];
-			i2c_reg_arrays[j].delay = 0;
-			i2c_reg_settings.size++;
-			i++;
-		}
-		i2c_reg_settings.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
-		i2c_reg_settings.reg_setting = i2c_reg_arrays;
-		i2c_reg_settings.delay = 10;
-		rc = cam_ext_cci_i2c_write_continuous_table(e_ctrl->io_master_info.cci_client, &i2c_reg_settings, 1);
-		if (rc) {
-			CAM_EXT_ERR(CAM_EXT_EEPROM,"eeprom write failed rc %d, calibDataSize: %d", rc, m_eeprom_size);
-			return rc;
+		m_eeprom_size = cam_write_eeprom->calibDataSize;
+		for (i = 0; i < m_eeprom_size;) {
+			i2c_reg_settings.size = 0;
+			star_addr = (cam_write_eeprom->baseAddr + i);
+			for (j = 0; j < WRITE_EEPROM_MAX_LENGTH && i < m_eeprom_size; j++) {
+				i2c_reg_arrays[j].reg_addr = star_addr;
+				i2c_reg_arrays[j].reg_data = cam_write_eeprom->calibData[i];
+				i2c_reg_arrays[j].delay = 0;
+				i2c_reg_settings.size++;
+				i++;
+			}
+			i2c_reg_settings.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+			i2c_reg_settings.reg_setting = i2c_reg_arrays;
+			i2c_reg_settings.delay = 10;
+			rc = cam_ext_cci_i2c_write_continuous_table(e_ctrl->io_master_info.cci_client, &i2c_reg_settings, 1);
+			if (rc) {
+				CAM_EXT_ERR(CAM_EXT_EEPROM,"eeprom write failed rc %d, calibDataSize: %d", rc, m_eeprom_size);
+				break;
+			}
 		}
 	}
 
+	write_rc = rc;
 	if (cam_write_eeprom->isWRP == 0x01) {
-		i2c_reg_settings.size = 1;
-	//new add WRPaddr and data in xml
-		i2c_reg_array.reg_addr = cam_write_eeprom->WRPaddr;
-		i2c_reg_array.reg_data = cam_write_eeprom->OpenWRP;
-
-		i2c_reg_array.delay = 0;
-		i2c_reg_settings.reg_setting = &i2c_reg_array;
-
-		rc = cam_ext_io_dev_read(e_ctrl->io_master_info.cci_client,
-			 i2c_reg_array.reg_addr, &readcalibData,
-			 CAMERA_SENSOR_I2C_TYPE_WORD,
-			 CAMERA_SENSOR_I2C_TYPE_BYTE, false);
-		if (rc) {
-			CAM_EXT_ERR(CAM_EXT_EEPROM,"read WRPaddr failed rc %d",rc);
-			return rc;
+		if (cam_write_eeprom->WRPSlaveID != INVALID_DATA)
+		{
+			e_ctrl->io_master_info.cci_client->sid = cam_write_eeprom->WRPSlaveID >> 1;
 		}
-
-		if(readcalibData != i2c_reg_array.reg_data) {
+		if (cam_write_eeprom->EnableWRPAddr != INVALID_DATA && cam_write_eeprom->EnableWRPData != INVALID_DATA)
+		{
+			i2c_reg_settings.size = 1;
+			i2c_reg_array.reg_addr = cam_write_eeprom->EnableWRPAddr;
+			i2c_reg_array.reg_data = cam_write_eeprom->EnableWRPData;
+			i2c_reg_array.delay = 0;
+			i2c_reg_settings.reg_setting = &i2c_reg_array;
 			rc = cam_ext_io_dev_write(e_ctrl->io_master_info.cci_client, &i2c_reg_settings);
 			if (rc) {
-				CAM_EXT_ERR(CAM_EXT_EEPROM,"write WRPaddr failed rc %d",rc);
-				return rc;
+				CAM_EXT_WARN(CAM_EXT_EEPROM,"EnableWRPData write fail, but maybe EnableWRP success, rc %d", rc);
 			}
-			CAM_EXT_INFO(CAM_EXT_EEPROM,"write!cam: WRPaddr: 0x%x", readcalibData);
+			i2c_reg_settings.size = 1;
+			//new add WRPaddr and data in xml
+			i2c_reg_array.reg_addr = cam_write_eeprom->WRPaddr;
+			i2c_reg_array.reg_data = cam_write_eeprom->OpenWRP;
+			i2c_reg_array.delay = 0;
+			i2c_reg_settings.reg_setting = &i2c_reg_array;
+			rc = cam_ext_io_dev_write(e_ctrl->io_master_info.cci_client, &i2c_reg_settings);
+			if (rc) {
+				CAM_EXT_ERR(CAM_EXT_EEPROM,"OpenWRP fail, rc %d", rc);
+			}
 		}
+		else
+		{
+			i2c_reg_settings.size = 1;
+			//new add WRPaddr and data in xml
+			i2c_reg_array.reg_addr = cam_write_eeprom->WRPaddr;
+			i2c_reg_array.reg_data = cam_write_eeprom->OpenWRP;
+
+			i2c_reg_array.delay = 0;
+			i2c_reg_settings.reg_setting = &i2c_reg_array;
+
+			rc = cam_ext_io_dev_read(e_ctrl->io_master_info.cci_client,
+				 i2c_reg_array.reg_addr, &readcalibData,
+				 CAMERA_SENSOR_I2C_TYPE_WORD,
+				 CAMERA_SENSOR_I2C_TYPE_BYTE, false);
+			if (rc) {
+				CAM_EXT_ERR(CAM_EXT_EEPROM,"read WRPaddr failed rc %d",rc);
+			}
+
+			if (!rc && readcalibData != i2c_reg_array.reg_data) {
+				rc = cam_ext_io_dev_write(e_ctrl->io_master_info.cci_client, &i2c_reg_settings);
+				if (rc) {
+					CAM_EXT_ERR(CAM_EXT_EEPROM,"write WRPaddr failed rc %d",rc);
+				}
+				CAM_EXT_INFO(CAM_EXT_EEPROM,"write!cam: WRPaddr: 0x%x", readcalibData);
+			}
+		}
+		e_ctrl->io_master_info.cci_client->sid = sid;
 	}
 	CAM_EXT_INFO(CAM_EXT_EEPROM,"exit write eeprom !!!");
 
-	return rc;
+	return write_rc ? write_rc : rc;
 }
 
 static int32_t cam_eeprom_write_data(struct cam_eeprom_ctrl_t *e_ctrl,

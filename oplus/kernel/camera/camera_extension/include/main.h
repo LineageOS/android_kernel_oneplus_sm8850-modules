@@ -102,6 +102,8 @@ struct camera_extension_data {
 	struct miscdevice dev;
 	bool   enable_camera_extension;
 	struct cam_state_queue_info state_queue;
+	int   non_exclusive_rgltr_count;
+	const char **non_exclusive_rgltr;
 };
 
 
