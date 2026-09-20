@@ -1,10 +1,11 @@
-load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load(":oplus_modules_variant.bzl",
     "bazel_support_target",
     "bazel_support_variant"
 )
 
 load(":oplus_modules_define.bzl", "oplus_ddk_get_oplus_features")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
 
 def ddk_copy_to_dist_dir(
         name = None,
@@ -55,20 +56,15 @@ def ddk_copy_to_dist_dir(
         for variant in bazel_support_variant:
             stem = "{}_{}_{}".format(target, variant, name)
 
-            copy_to_dist_dir(
+            pkg_files(
+                name = "{}_dist_files".format(stem),
+                srcs = data,
+                visibility = ["//visibility:private"],
+                strip_prefix = strip_prefix.files_only(),
+            )
+
+            pkg_install(
                 name = "{}_dist".format(stem),
-                data = data,
-                dist_dir = "out/msm-kernel-{}-{}/dist".format(target, variant),
-                flat = True,
-                log = "info",
-                allow_duplicate_filenames = True,
-                mode_overrides = {
-                    # do not sort
-                    "**/*.elf": "755",
-                    "**/vmlinux": "755",
-                    "**/Image": "755",
-                    "**/*.dtb*": "755",
-                    "**/LinuxLoader*": "755",
-                    "**/*": "644",
-                },
+                srcs = [":{}_dist_files".format(stem)],
+                destdir = "out/msm-kernel-{}-{}/dist".format(target, variant),
             )
