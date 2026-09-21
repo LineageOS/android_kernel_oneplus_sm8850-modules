@@ -6222,6 +6222,9 @@ int dsi_panel_send_qsync_on_dcs(struct dsi_panel *panel,
 	}
 
 #ifdef OPLUS_FEATURE_DISPLAY_ADFR
+	if (oplus_adfr_is_supported(oplus_adfr_get_params(panel)))
+		return 0;
+
 	OPLUS_ADFR_TRACE_INT("oplus_adfr_osync_mode_cmd", 1);
 #endif /* OPLUS_FEATURE_DISPLAY_ADFR */
 
@@ -6241,11 +6244,17 @@ int dsi_panel_send_qsync_off_dcs(struct dsi_panel *panel,
 {
 	int rc = 0;
 
-#ifdef OPLUS_FEATURE_DISPLAY_ADFR
-	if (!panel || !panel->cur_mode) {
-#else /* OPLUS_FEATURE_DISPLAY_ADFR */
 	if (!panel) {
+		DSI_ERR("invalid params\n");
+		return -EINVAL;
+	}
+
+#ifdef OPLUS_FEATURE_DISPLAY_ADFR
+	if (oplus_adfr_is_supported(oplus_adfr_get_params(panel)))
+		return 0;
 #endif /* OPLUS_FEATURE_DISPLAY_ADFR */
+
+	if (!panel->cur_mode) {
 		DSI_ERR("invalid params\n");
 		return -EINVAL;
 	}

@@ -133,7 +133,7 @@ int oplus_adfr_update_display_id(void)
 	return 0;
 }
 
-static struct oplus_adfr_params *oplus_adfr_get_params(void *dsi_panel)
+struct oplus_adfr_params *oplus_adfr_get_params(void *dsi_panel)
 {
 	struct dsi_panel *panel = dsi_panel;
 
@@ -1832,6 +1832,12 @@ int oplus_adfr_status_reset(void *dsi_panel)
 
 		p_oplus_adfr_params->sa_min_fps = refresh_rate;
 		p_oplus_adfr_params->sa_min_fps_updated = false;
+		if (p_oplus_adfr_params->qsync_mode != SDE_RM_QSYNC_DISABLED) {
+			p_oplus_adfr_params->auto_mode = OPLUS_ADFR_AUTO_ON;
+			p_oplus_adfr_params->auto_mode_updated = true;
+			p_oplus_adfr_params->sa_min_fps = panel->qsync_caps.qsync_min_fps;
+			p_oplus_adfr_params->sa_min_fps_updated = true;
+		}
 		if (oplus_adfr_high_precision_sa_mode_is_enabled(p_oplus_adfr_params)) {
 			p_oplus_adfr_params->sa_high_precision_fps_updated = false;
 		}
@@ -2794,13 +2800,35 @@ int oplus_adfr_set_osync_params(void *sde_connector, unsigned int oplus_adfr_osy
 		ADFR_DEBUG("adfr is not supported\n");
 		return 0;
 	}
+	if (oplus_adfr_osync_params == OPLUS_ADFR_OSYNC_MODE)
+		p_oplus_adfr_params->qsync_mode = c_conn->qsync_mode;
 
 	if (!display->panel->cur_mode) {
-		ADFR_ERR("invalid cur_mode param\n");
-		return -EINVAL;
+		return 0;
 	}
 
 	h_skew = display->panel->cur_mode->timing.h_skew;
+
+	if (h_skew == STANDARD_ADFR || h_skew == STANDARD_MFR) {
+		if (oplus_adfr_osync_params == OPLUS_ADFR_OSYNC_MODE) {
+			prop_val = c_conn->qsync_mode == SDE_RM_QSYNC_DISABLED ?
+					OPLUS_ADFR_AUTO_OFF : OPLUS_ADFR_AUTO_ON;
+			if (prop_val != p_oplus_adfr_params->auto_mode) {
+				p_oplus_adfr_params->auto_mode = prop_val;
+				p_oplus_adfr_params->auto_mode_updated = true;
+				p_oplus_adfr_params->sa_min_fps_updated = true;
+			}
+		} else if (oplus_adfr_osync_params == OPLUS_ADFR_OSYNC_MIN_FPS) {
+			prop_val = display->panel->cur_mode->timing.refresh_rate;
+			if (c_conn->qsync_mode != SDE_RM_QSYNC_DISABLED)
+				prop_val = display->panel->qsync_caps.qsync_min_fps;
+			if (prop_val != p_oplus_adfr_params->sa_min_fps) {
+				p_oplus_adfr_params->sa_min_fps = prop_val;
+				p_oplus_adfr_params->sa_min_fps_updated = true;
+			}
+		}
+		return 0;
+	}
 
 	if (h_skew != OPLUS_ADFR) {
 		ADFR_DEBUG("not in oa mode, should not set osync params\n");
