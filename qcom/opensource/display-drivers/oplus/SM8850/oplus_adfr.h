@@ -126,6 +126,7 @@ struct oplus_adfr_params {
 	bool need_filter_auto_on_cmd;					/* indicates whether auto on cmds need to be filtered if auto off cmds have been sent within one frame or not */
 	unsigned int sa_min_fps;						/* the minimum self-refresh rate when no image would be sent to ddic in sa mode */
 	bool sa_min_fps_updated;						/* indicates whether sa min fps is updated or not */
+	unsigned int qsync_mode;						/* the latest qsync mode requested by sde */
 	bool skip_min_fps_setting;						/* indicates whether min fps setting should be skipped or not */
 	unsigned int sw_fps;							/* software vsync value */
 	struct pinctrl_state *te1_active;				/* a pinctrl state used to control te1 active */
@@ -216,6 +217,7 @@ extern unsigned int oplus_display_trace_enable;
 int oplus_adfr_update_display_id(void);
 int oplus_adfr_init(void *dsi_panel);
 bool oplus_adfr_is_supported(void *oplus_adfr_params);
+struct oplus_adfr_params *oplus_adfr_get_params(void *dsi_panel);
 bool oplus_adfr_oa_bl_mutual_exclusion_is_enabled(void *oplus_adfr_params);
 
 /* -------------------- standard adfr -------------------- */
