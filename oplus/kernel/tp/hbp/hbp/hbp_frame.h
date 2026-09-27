@@ -41,7 +41,7 @@ struct frame_buf {
 	union touch_time frame_tv0;
 	union touch_time frame_tv;
 	enum irq_reason reason;
-	char data[1];
+	char data[];
 };
 
 struct frame_list {
