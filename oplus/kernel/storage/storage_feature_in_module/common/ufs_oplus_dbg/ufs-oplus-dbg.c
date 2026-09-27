@@ -578,6 +578,8 @@ static void ufshcd_lrb_devcmd_time_statistics(struct ufs_hba *hba, struct ufshcd
 
 void ufs_send_cmd_handle(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
+	/* Core timestamps are optional when the UFS monitor is disabled. */
+	lrbp->issue_time_stamp = ktime_get();
 	if (ufs_transmission_status.transmission_status_enable) {
 		if(lrbp->cmd) {
 			ufs_transmission_status.scsi_send_count++;
@@ -589,10 +591,10 @@ void ufs_send_cmd_handle(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lrb
 
 void ufs_compl_cmd_handle(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
+	lrbp->compl_time_stamp = ktime_get();
 #if (LINUX_VERSION_CODE <= KERNEL_VERSION(6, 6, 0))
 	if (lrbp->cmd) {
 		if (ufs_transmission_status.transmission_status_enable) {
-			lrbp->compl_time_stamp = ktime_get();
 			ufshcd_lrb_scsicmd_time_statistics(hba, lrbp);
 		}
 	} else if (lrbp->command_type == UTP_CMD_TYPE_DEV_MANAGE ||
@@ -604,7 +606,6 @@ void ufs_compl_cmd_handle(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lr
 #else
 	if (lrbp->cmd) {
 		if (ufs_transmission_status.transmission_status_enable) {
-			lrbp->compl_time_stamp = ktime_get();
 			ufshcd_lrb_scsicmd_time_statistics(hba, lrbp);
 		}
 	} else if (lrbp->command_type == UTP_CMD_TYPE_UFS_STORAGE) {
