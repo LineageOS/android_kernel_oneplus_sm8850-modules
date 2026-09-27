@@ -1304,7 +1304,10 @@ int tmf8806_stop(void)
 
 	if (is_8806_alread_probe == 1) {
 		AMS_MUTEX_OEM_LOCK(&chip->oem_lock);
-		tmf8806StopMeasurement(&chip->tof_core);
+		AMS_MUTEX_OEM_LOCK(&chip->power_lock);
+		if (chip->power_status == TOF8806_POWER_ON)
+			tmf8806StopMeasurement(&chip->tof_core);
+		AMS_MUTEX_OEM_UNLOCK(&chip->power_lock);
 		CAM_EXT_INFO(CAM_EXT_TOF, "tof stop capture ");
 		AMS_MUTEX_OEM_UNLOCK(&chip->oem_lock);
 		g_is_alread_runing=0;
@@ -1324,7 +1327,10 @@ void tmf8806_clean(void)
 
 		if (chip->tof_core.measureConfig.data.command != 0) {
 			chip->tof_core.measureConfig.data.command = 0;
-			tmf8806StopMeasurement(&chip->tof_core);
+			AMS_MUTEX_OEM_LOCK(&chip->power_lock);
+			if (chip->power_status == TOF8806_POWER_ON)
+				tmf8806StopMeasurement(&chip->tof_core);
+			AMS_MUTEX_OEM_UNLOCK(&chip->power_lock);
 		}
 
 		if (chip->poll_period && irq_thread_status) {
