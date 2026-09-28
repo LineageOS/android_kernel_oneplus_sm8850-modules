@@ -636,6 +636,9 @@ static int cam_isp_mgr_drv_config(struct cam_ife_hw_mgr_ctx         *ctx,
 			ctx->per_req_info[index].drv_info.req_id = request_id;
 			ctx->per_req_info[index].drv_info.blanking_duration = 0;
 		} else {
+			if (!ctx->is_init_drv_cfg_received)
+				return 0;
+
 			update_drv = true;
 			drv_en = false;
 			goto set_drv;

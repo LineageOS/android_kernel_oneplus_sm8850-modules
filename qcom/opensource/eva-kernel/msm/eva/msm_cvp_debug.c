@@ -4,6 +4,7 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.​
  */
 
+#include <linux/atomic.h>
 #include <linux/debugfs.h>
 #include "msm_cvp_debug.h"
 #include "msm_cvp_common.h"
@@ -12,6 +13,8 @@
 #include "msm_cvp_dsp.h"
 
 #define MAX_SSR_STRING_LEN 10
+
+static atomic64_t cvp_debugfs_id = ATOMIC64_INIT(0);
 #ifdef USE_PRESIL
 int msm_cvp_debug = CVP_ERR | CVP_WARN | CVP_FW | CVP_DBG;
 #else
@@ -685,7 +688,8 @@ struct dentry *msm_cvp_debugfs_init_inst(struct msm_cvp_inst *inst,
 		dprintk(CVP_ERR, "Invalid params, inst: %pK\n", inst);
 		goto exit;
 	}
-	snprintf(debugfs_name, MAX_DEBUGFS_NAME, "inst_%pK", inst);
+	snprintf(debugfs_name, MAX_DEBUGFS_NAME, "inst_%llu",
+		(unsigned long long)atomic64_inc_return(&cvp_debugfs_id));
 
 	idata = kzalloc(sizeof(*idata), GFP_KERNEL);
 	if (!idata) {

@@ -200,7 +200,6 @@ int hfi_core_ssr_irq_init(struct hfi_core_drv_data *drv_data)
 		HFI_CORE_ERR("failed to acquire dcp clock ready IRQ, ret: %d\n", ret);
 		return ret;
 	}
-	disable_irq_wake(irq_info->smp2p_dcp_clock_ready_irq);
 
 	/* SMP2P Pong IRQ setup */
 	irq_info->smp2p_dcp_pong_irq = platform_get_irq_byname(pdev, "smp2p_dcp_pong_irq");
