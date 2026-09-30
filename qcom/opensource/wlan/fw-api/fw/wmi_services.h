@@ -870,6 +870,24 @@ typedef  enum  {
     /* FW supports security profile configuration (802.11bn) */
     WMI_SERVICE_SECURITY_PROFILE_SUPPORT = 523,
 
+    /*
+     * FW supports MLO reconfig-recovery mode —
+     * chip crash handled via ML-reconfig sequence
+     */
+    WMI_SERVICE_MLO_RECOVERY_RECONFIG_SUPPORT = 524,
+
+    /** FW supports NAN ranging in CFG offload mode:
+     *  - Discovery-based ranging (triggered on NAN disc match)
+     *  - Periodic ranging (ranging_interval_ms in disc service req)
+     *  - Request-based ranging (WMI_RTT_PEER_MEAS_REQ_CMDID on NAN vdev)
+     *  Uses wmi_nan_disc_ranging_config_param TLV in
+     *  WMI_NAN_DISC_SERVICE_REQUEST_CMDID for disc/periodic ranging.
+     *  Uses existing WMI_RTT_PEER_MEAS_* for request-based ranging. */
+    WMI_SERVICE_NAN_RANGING_OFFLOAD_SUPPORT = 525,
+
+    /* FW supports TX utilization-based thermal throttling */
+    WMI_SERVICE_UTIL_BASED_THROTTLING = 526,
+
 
     WMI_MAX_EXT2_SERVICE
 
