@@ -2260,7 +2260,7 @@ static const struct msm_vidc_platform_data shikra_data = {
 	.reg_prst_tbl = shikra_reg_preset_table,
 	.reg_prst_tbl_size = ARRAY_SIZE(shikra_reg_preset_table),
 	.clock_source_scaling_ratio = 1,
-	.fwname = "venus_5mb_v6_rsa",
+	.fwname = "venus_5mb_v6_ecdsa",
 	.pas_id = 9,
 	.supports_mmrm = 0,
 
