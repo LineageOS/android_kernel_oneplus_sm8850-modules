@@ -24,7 +24,8 @@
 #define MAX_BITRATE             245000000
 #define DEFAULT_BITRATE         20000000
 #define MINIMUM_FPS             1
-#define MAXIMUM_FPS             480
+#define MAXIMUM_FPS             30
+#define MAXIMUM_DEC_FPS         60
 #define MAX_QP                  51
 #define DEFAULT_QP              20
 #define MAX_CONSTANT_QUALITY    100
@@ -199,26 +200,22 @@ static struct matrix_coeff_info matrix_coeff_data_purwa[] = {
 
 static struct msm_platform_core_capability core_data_purwa[] = {
 	/* {type, value} */
-	{ENC_CODECS, H264 | HEVC},
-	{DEC_CODECS, H264 | HEVC | VP9 | AV1},
-	{MAX_SESSION_COUNT, 24},
+	{ENC_CODECS, H264 | HEVC | HEIC},
+	{DEC_CODECS, H264 | HEVC | VP9 | AV1 | HEIC},
+	{MAX_SESSION_COUNT, 16},
 	{MAX_NUM_720P_SESSIONS, 16},
-	{MAX_NUM_1080P_SESSIONS, 16},
-	{MAX_NUM_4K_SESSIONS, 8},
-	{MAX_NUM_8K_SESSIONS, 2},
-	{MAX_RT_MBPF, 174080},	/* (8192x4352)/256 + (4096x2176)/256*/
-	{MAX_MBPF, 278528}, /* ((8192x4352)/256) * 2 */
-	{MAX_MBPS, 7833600},
-	/* max_load
-	 * 7680x4320@60fps or 3840x2176@240fps
-	 * which is greater than 4096x2176@120fps,
-	 * 8192x4320@48fps
-	 */
+	{MAX_NUM_1080P_SESSIONS, 8},
+	{MAX_NUM_4K_SESSIONS, 2},
+	{MAX_SECURE_SESSION_COUNT, 3},
+	{MAX_RT_MBPF, 69632}, /* (2 * ((4096x2176)/256))*/
+	{MAX_MBPF, 104448}, /* (3 * ((4096x2176)/256))*/
+	{MAX_MBPS, 2088960}, /* max_load 4096x2176@60fps*/
+	{MAX_IMAGE_MBPF, 1048576},  /* (16384x16384)/256 */
 	{MAX_MBPF_HQ, 8160}, /* ((1920x1088)/256) */
-	{MAX_MBPS_HQ, 489600}, /* ((1920x1088)/256)@60fps */
+	{MAX_MBPS_HQ, 244800}, /* ((1920x1088)/256)@30fps */
 	{MAX_MBPF_B_FRAME, 32640}, /* 3840x2176/256 */
-	{MAX_MBPS_B_FRAME, 1958400}, /* 3840x2176/256 MBs@60fps */
-	{MAX_MBPS_ALL_INTRA, 1044480}, /* 4096x2176/256 MBs@30fps */
+	{MAX_MBPS_B_FRAME, 979200}, /* 3840x2176/256 MBs@30fps */
+	{MAX_MBPS_ALL_INTRA, 489600}, /* ((1920x1088)/256)@60fps */
 	{MAX_ENH_LAYER_COUNT, 5},
 	{NUM_VPP_PIPE, 1},
 	{SW_PC, 1},
@@ -308,29 +305,29 @@ static struct msm_platform_inst_capability instance_cap_data_purwa[] = {
 	 *      flags}
 	 */
 
-	{FRAME_WIDTH, DEC, CODECS_ALL, 96, 8192, 1, 1920},
+	{FRAME_WIDTH, DEC, CODECS_ALL, 96, 4096, 1, 1920},
 
-	{FRAME_WIDTH, DEC, VP9, 96, 4096, 1, 1920},
+	{FRAME_WIDTH, ENC, CODECS_ALL, 96, 4096, 1, 1920},
 
-	{FRAME_WIDTH, ENC, CODECS_ALL, 128, 8192, 1, 1920},
+	{FRAME_WIDTH, ENC, HEIC, 128, 8192, 1, 8192},
 
-	{FRAME_WIDTH, ENC, HEVC, 96, 8192, 1, 1920},
+	{LOSSLESS_FRAME_WIDTH, ENC, CODECS_ALL, 96, 4096, 1, 1920},
 
-	{LOSSLESS_FRAME_WIDTH, ENC, CODECS_ALL, 128, 4096, 1, 1920},
+	{SECURE_FRAME_WIDTH, DEC, CODECS_ALL, 96, 4096, 1, 1920},
 
-	{LOSSLESS_FRAME_WIDTH, ENC, HEVC, 96, 4096, 1, 1920},
+	{SECURE_FRAME_WIDTH, ENC, CODECS_ALL, 96, 4096, 1, 1920},
 
-	{FRAME_HEIGHT, DEC, CODECS_ALL, 96, 8192, 1, 1080},
+	{FRAME_HEIGHT, DEC, CODECS_ALL, 96, 4096, 1, 1080},
 
-	{FRAME_HEIGHT, DEC, VP9, 96, 4096, 1, 1080},
+	{FRAME_HEIGHT, ENC, CODECS_ALL, 96, 4096, 1, 1080},
 
-	{FRAME_HEIGHT, ENC, CODECS_ALL, 128, 8192, 1, 1080},
+	{FRAME_HEIGHT, ENC, HEIC, 128, 8192, 1, 8192},
 
-	{FRAME_HEIGHT, ENC, HEVC, 96, 8192, 1, 1080},
+	{LOSSLESS_FRAME_HEIGHT, ENC, CODECS_ALL, 96, 4096, 1, 1080},
 
-	{LOSSLESS_FRAME_HEIGHT, ENC, CODECS_ALL, 128, 4096, 1, 1080},
+	{SECURE_FRAME_HEIGHT, DEC, CODECS_ALL, 96, 4096, 1, 1080},
 
-	{LOSSLESS_FRAME_HEIGHT, ENC, HEVC, 96, 4096, 1, 1080},
+	{SECURE_FRAME_HEIGHT, ENC, CODECS_ALL, 96, 4096, 1, 1080},
 
 	{PIX_FMTS, ENC | DEC, H264,
 		MSM_VIDC_FMT_NV12,
@@ -1855,7 +1852,7 @@ static struct msm_platform_inst_cap_dependency instance_cap_dependency_data_purw
 
 /* Default UBWC config for LPDDR5 */
 static struct msm_vidc_ubwc_config_data ubwc_config_purwa[] = {
-	UBWC_CONFIG(8, 32, 17, 0, 1, 1, 1),
+	UBWC_CONFIG(8, 32, 16, 0, 1, 1, 1),
 };
 
 static struct msm_vidc_format_capability format_data_purwa = {
@@ -1892,6 +1889,9 @@ static const struct clk_table purwa_clk_table[] = {
 	{ "core",                     VIDEO_CC_MVS0C_CLK,      0},
 	{ "vcodec0_core",             VIDEO_CC_MVS0_CLK,      1,
 	 (u64[]) {460000000, 424000000, 335000000, 300000000, 210000000}, 5},
+	{ "vcodec0_bse",             VIDEO_CC_MVS0_BSE_CLK,      0 },
+	{ "video_cc_mvs0_bse_clk_src", VIDEO_CC_MVS0_BSE_CLK_SRC,  1,
+	 (u64[]) {920000000, 848000000, 670000000, 600000000, 400000000}, 5},
 };
 
 /* name, exclusive_release */
@@ -2035,8 +2035,8 @@ static const struct msm_vidc_platform_data purwa_data = {
 	/* platform specific resources */
 	.reg_prst_tbl = purwa_reg_preset_table,
 	.reg_prst_tbl_size = ARRAY_SIZE(purwa_reg_preset_table),
-	.clock_source_scaling_ratio = 3,
-	.fwname = "./qcom/vpu/vpu30_p1",
+	.clock_source_scaling_ratio = 1,
+	.fwname = "vpu30_1v",
 	.pas_id = 9,
 	.supports_mmrm = 0,
 

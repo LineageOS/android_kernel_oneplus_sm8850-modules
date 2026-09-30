@@ -551,6 +551,13 @@ int venus_hfi_queue_init(struct msm_vidc_core *core)
 	mem.secure = false;
 	mem.map_kernel = true;
 	mem.delayed_unmap = false;
+
+	if (core->capabilities[OVERRIDE_QUEUE_SIZE].value)
+		mem.size = core->capabilities[OVERRIDE_QUEUE_SIZE].value;
+
+	d_vpr_h("%s: interface queue size=%u bytes\n",
+		__func__, mem.size);
+
 	rc = call_mem_op(core, memory_alloc_map, core, &mem);
 	if (rc) {
 		d_vpr_e("%s: alloc and map failed\n", __func__);

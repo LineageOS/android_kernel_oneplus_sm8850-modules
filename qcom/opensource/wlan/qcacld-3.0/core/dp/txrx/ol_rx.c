@@ -1507,6 +1507,7 @@ void ol_rx_peer_init(struct ol_txrx_pdev_t *pdev, struct ol_txrx_peer_t *peer)
 
 	for (tid = 0; tid < OL_TXRX_NUM_EXT_TIDS; tid++) {
 		ol_rx_reorder_init(&peer->tids_rx_reorder[tid], tid);
+		qdf_spinlock_create(&peer->tids_rx_reorder[tid].defrag_tid_lock);
 
 		/* invalid sequence number */
 		peer->tids_last_seq[tid] = IEEE80211_SEQ_MAX;
@@ -1533,11 +1534,16 @@ void ol_rx_peer_init(struct ol_txrx_pdev_t *pdev, struct ol_txrx_peer_t *peer)
 void
 ol_rx_peer_cleanup(struct ol_txrx_vdev_t *vdev, struct ol_txrx_peer_t *peer)
 {
+	uint8_t tid;
+
 	peer->keyinstalled = 0;
 	peer->last_assoc_rcvd = 0;
 	peer->last_disassoc_rcvd = 0;
 	peer->last_deauth_rcvd = 0;
 	ol_rx_reorder_peer_cleanup(vdev, peer);
+
+	for (tid = 0; tid < OL_TXRX_NUM_EXT_TIDS; tid++)
+		qdf_spinlock_destroy(&peer->tids_rx_reorder[tid].defrag_tid_lock);
 }
 
 /*
@@ -1555,6 +1561,18 @@ void ol_rx_frames_free(htt_pdev_handle htt_pdev, qdf_nbuf_t frames)
 }
 
 #ifdef WLAN_FULL_REORDER_OFFLOAD
+void
+ol_rx_per_ce_stats_update(ol_txrx_pdev_handle pdev, uint8_t ce_id,
+			  uint32_t msdu_count)
+{
+	int cpu_id = qdf_get_cpu();
+
+	if (qdf_unlikely(ce_id >= OL_TXRX_CE_COUNT_MAX))
+		return;
+
+	pdev->stats.priv.rx.ce_packets[cpu_id][ce_id] += msdu_count;
+}
+
 void
 ol_rx_in_order_indication_handler(ol_txrx_pdev_handle pdev,
 				  qdf_nbuf_t rx_ind_msg,

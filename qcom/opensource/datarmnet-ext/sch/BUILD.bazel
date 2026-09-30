@@ -15,3 +15,6 @@ define_sch("chora", "perf")
 
 define_sch("malabar", "consolidate")
 define_sch("malabar", "perf")
+
+define_sch("waipio", "consolidate")
+define_sch("waipio", "perf")

@@ -15,6 +15,8 @@ load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
 
 def define_modules(target, variant):
     kernel_build_variant = "{}_{}".format(target, variant)
+    if target=="mahua":
+        kernel_build_variant = "{}_{}".format("glymur", variant)
 
     kernel_build = soc_label("{}_base_kernel".format(kernel_build_variant))
     ddk_deps = [

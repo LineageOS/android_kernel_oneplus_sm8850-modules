@@ -25,6 +25,9 @@ define_wlan("chora", "perf")
 define_wlan("malabar", "consolidate")
 define_wlan("malabar", "perf")
 
+define_wlan("waipio", "consolidate")
+define_wlan("waipio", "perf")
+
 ddk_headers(
     name = "rmnet_wlan_include_headers",
     hdrs = glob([

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define CREATE_TRACE_POINTS
@@ -425,6 +425,11 @@ static ssize_t trigger_ssr_write(struct file *filp, const char __user *buf,
 	if (!core) {
 		d_vpr_e("%s: invalid params %pK\n", __func__, core);
 		return 0;
+	}
+
+	if (core != g_core) {
+		d_vpr_e("%s: core is no longer valid\n", __func__);
+		return -EINVAL;
 	}
 
 	if (!buf)

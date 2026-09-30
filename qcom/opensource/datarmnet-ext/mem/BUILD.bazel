@@ -34,6 +34,9 @@ define_mem("malabar", "perf")
 define_mem("shikra", "consolidate")
 define_mem("shikra", "perf")
 
+define_mem("waipio", "consolidate")
+define_mem("waipio", "perf")
+
 package(
 	default_visibility = [
 	"//visibility:public", ],

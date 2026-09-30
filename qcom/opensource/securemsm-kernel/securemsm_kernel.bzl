@@ -86,7 +86,7 @@ def define_target_variant_modules(target, variant, modules, extra_options = [], 
         deps += [
             soc_label("{}/drivers/soc/qcom/sps/sps_drv".format(kernel_build_variant)),
         ]
-    qseecom_proxy_targets = ["sun", "canoe", "vienna", "qcs610", "monaco", "alor-le", "malabar", "seraph", "vienna-le", "bengal", "shikra", "lahaina", "bengal-le"]
+    qseecom_proxy_targets = ["sun", "canoe", "vienna", "qcs610", "monaco", "alor-le", "malabar", "seraph", "vienna-le", "bengal", "shikra", "lahaina", "bengal-le", "waipio", "autogvm"]
     if target in qseecom_proxy_targets:
         deps += [
             soc_label("{}/drivers/misc/qseecom_proxy".format(kernel_build_variant)),

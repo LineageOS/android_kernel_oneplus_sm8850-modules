@@ -9,8 +9,18 @@
 
 #include <linux/types.h>
 #include <linux/v4l2-controls.h>
+#include <linux/videodev2.h>
 
 /* AV1 */
+#ifdef V4L2_PIX_FMT_AV1
+/*
+ * V4L2_PIX_FMT_AV1 v4l2_fourcc('A', 'V', '0', '1') is defined in
+ * videodev2.h and hence add support for v4l2_fourcc('A', 'V', '1', '0')
+ * in video driver to continue supporting old userspace.
+ */
+#define V4L2_PIX_FMT_VIDC_AV1                   v4l2_fourcc('A', 'V', '1', '0')
+#endif
+
 #ifndef V4L2_PIX_FMT_AV1
 #define V4L2_PIX_FMT_AV1                        v4l2_fourcc('A', 'V', '1', '0')
 #endif

@@ -698,6 +698,7 @@ enum msm_vidc_core_capability_type {
 	NUM_VPU,
 	SKIP_DELAYED_UNMAP,
 	CACHE_OPS_REQUIRED,
+	OVERRIDE_QUEUE_SIZE,
 	CORE_CAP_MAX,
 };
 

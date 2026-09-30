@@ -3096,14 +3096,15 @@ static void __cam_req_mgr_free_link(struct cam_req_mgr_core_link *link)
 
 	/*
 	 * Acquire link->lock to synchronize with cam_req_mgr_cb_add_req()
-	 * and prevent TOCTOU race when freeing in_q
+	 * and schedule_request paths that read link->parent; null both
+	 * pointers inside the lock so readers see a consistent state.
 	 */
 	mutex_lock(&link->lock);
 	CAM_MEM_FREE(link->req.in_q);
+	link->parent = NULL;
 	link->req.in_q = NULL;
 	mutex_unlock(&link->lock);
 
-	link->parent = NULL;
 	i = link - g_links;
 	CAM_DBG(CAM_CRM, "free link index %d", i);
 	cam_req_mgr_core_link_reset(link);
@@ -5226,6 +5227,7 @@ static int __cam_req_mgr_unlink(
 
 	/* Destroy worker of link and corresponding task data */
 	cam_worker_wrapper_deinit(link->worker_ctx);
+	link->worker_ctx = NULL;
 	CAM_MEM_FREE(link->task_data);
 	link->task_data = NULL;
 	/* Acquire session mutex after worker flush */
@@ -5627,12 +5629,15 @@ int cam_req_mgr_schedule_request(
 		goto end;
 	}
 
+	mutex_lock(&link->lock);
 	session = (struct cam_req_mgr_core_session *)link->parent;
 	if (!session) {
 		CAM_WARN(CAM_CRM, "session ptr NULL %x", sched_req->link_hdl);
+		mutex_unlock(&link->lock);
 		rc = -EINVAL;
 		goto end;
 	}
+	mutex_unlock(&link->lock);
 
 	if (sched_req->req_id <= link->last_flush_id) {
 		CAM_INFO(CAM_CRM,
@@ -5693,12 +5698,15 @@ int cam_req_mgr_schedule_request_v2(
 		goto end;
 	}
 
+	mutex_lock(&link->lock);
 	session = (struct cam_req_mgr_core_session *)link->parent;
 	if (!session) {
 		CAM_WARN(CAM_CRM, "session ptr NULL %x", sched_req->link_hdl);
+		mutex_unlock(&link->lock);
 		rc = -EINVAL;
 		goto end;
 	}
+	mutex_unlock(&link->lock);
 
 	if (sched_req->req_id <= link->last_flush_id) {
 		CAM_INFO(CAM_CRM,
@@ -5807,12 +5815,15 @@ int cam_req_mgr_schedule_request_v3(
 		goto end;
 	}
 
+	mutex_lock(&link->lock);
 	session = (struct cam_req_mgr_core_session *)link->parent;
 	if (!session) {
 		CAM_WARN(CAM_CRM, "session ptr NULL %x", sched_req->link_hdl);
+		mutex_unlock(&link->lock);
 		rc = -EINVAL;
 		goto end;
 	}
+	mutex_unlock(&link->lock);
 
 	if (sched_req->req_id <= link->last_flush_id) {
 		CAM_INFO(CAM_CRM,

@@ -1599,7 +1599,7 @@ static char *file_to_filename(struct file *filp)
 	return filename;
 }
 
-bool is_proc_channel_owner(struct spcom_channel *ch, u32 pid)
+static __maybe_unused bool is_proc_channel_owner(struct spcom_channel *ch, u32 pid)
 {
 	int i = 0;
 
@@ -3229,7 +3229,7 @@ static inline int spcom_ioctl_copy_user_arg(void *user_arg, void *arg_copy, uint
 	return 0;
 }
 
-bool is_arg_size_expected(unsigned int cmd, uint32_t arg_size)
+static bool is_arg_size_expected(unsigned int cmd, uint32_t arg_size)
 {
 	uint32_t expected_size = 0;
 

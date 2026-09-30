@@ -290,6 +290,12 @@ static const struct msm_platform_core_capability core_data_malabar[] = {
 		V4L2_CAP_META_CAPTURE | V4L2_CAP_META_OUTPUT | V4L2_CAP_STREAMING},
 	{SUPPORTS_REQUESTS, 0},
 	{CACHE_OPS_REQUIRED, 1},
+	/*
+	 * Platform-specific override for interface queue allocation size.
+	 * Value derived from TOTAL_QSIZE computed in venus_hfi_queue_init()
+	 * using max concurrent sessions = 8 instead of 16.
+	 */
+	{OVERRIDE_QUEUE_SIZE, 2084864},
 };
 
 static struct msm_platform_inst_capability instance_cap_data_malabar[] = {

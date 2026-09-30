@@ -18,3 +18,6 @@ define_offload("chora", "perf")
 
 define_offload("malabar", "consolidate")
 define_offload("malabar", "perf")
+
+define_offload("waipio", "consolidate")
+define_offload("waipio", "perf")
