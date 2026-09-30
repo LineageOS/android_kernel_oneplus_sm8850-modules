@@ -16,6 +16,9 @@ define_aps("chora", "perf")
 define_aps("malabar", "consolidate")
 define_aps("malabar", "perf")
 
+define_aps("waipio", "consolidate")
+define_aps("waipio", "perf")
+
 ddk_headers(
     name = "rmnet_aps_include_headers",
     hdrs = glob([

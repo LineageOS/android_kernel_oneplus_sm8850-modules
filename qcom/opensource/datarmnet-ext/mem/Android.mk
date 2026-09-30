@@ -13,6 +13,7 @@ RMNET_MEM_DLKM_PLATFORMS_LIST += bengal
 RMNET_MEM_DLKM_PLATFORMS_LIST += chora
 RMNET_MEM_DLKM_PLATFORMS_LIST += malabar
 RMNET_MEM_DLKM_PLATFORMS_LIST += shikra
+RMNET_MEM_DLKM_PLATFORMS_LIST += taro
 
 ifeq ($(call is-board-platform-in-list, $(RMNET_MEM_DLKM_PLATFORMS_LIST)),true)
 LOCAL_PATH := $(call my-dir)

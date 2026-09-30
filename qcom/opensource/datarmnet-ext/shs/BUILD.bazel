@@ -13,6 +13,8 @@ define_shs("chora", "consolidate")
 define_shs("chora", "perf")
 define_shs("malabar", "consolidate")
 define_shs("malabar", "perf")
+define_shs("waipio", "consolidate")
+define_shs("waipio", "perf")
 
 ddk_headers(
     name = "rmnet_shs_include_headers",

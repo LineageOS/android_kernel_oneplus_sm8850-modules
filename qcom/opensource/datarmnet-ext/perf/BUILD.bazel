@@ -19,6 +19,9 @@ define_perf("chora", "perf")
 define_perf("malabar", "consolidate")
 define_perf("malabar", "perf")
 
+define_perf("waipio", "consolidate")
+define_perf("waipio", "perf")
+
 ddk_headers(
     name = "rmnet_perf_include_headers",
     hdrs = glob([

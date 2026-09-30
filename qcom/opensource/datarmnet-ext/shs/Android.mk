@@ -6,6 +6,7 @@ RMNET_SHS_DLKM_PLATFORMS_LIST += vienna
 RMNET_SHS_DLKM_PLATFORMS_LIST += lahaina
 RMNET_SHS_DLKM_PLATFORMS_LIST += chora
 RMNET_SHS_DLKM_PLATFORMS_LIST += malabar
+RMNET_SHS_DLKM_PLATFORMS_LIST += taro
 
 ifeq ($(call is-board-platform-in-list, $(RMNET_SHS_DLKM_PLATFORMS_LIST)),true)
 #Make file to create RMNET_SHS DLKM
