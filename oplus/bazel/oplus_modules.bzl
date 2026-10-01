@@ -21,13 +21,16 @@ def define_oplus_ddk_modules(target, msm_target, variant):
         modules_label("oplus/kernel/charger/bazel:{}_oplus_chg_v2").format(target),
         modules_label("oplus/kernel/charger/bazel:{}_test-kit").format(target),
         modules_label("oplus/kernel/charger/bazel:{}_ufcs_class").format(target),
+        modules_label("oplus/kernel/charger/bazel:{}_oplus_wireless_pen_mt5806").format(target),
         modules_label("oplus/kernel/cpu:horae_shell_temp"),
+        modules_label("oplus/kernel/device_info/cs_press:oplus_bsp_cs_press_f71"),
         modules_label("oplus/kernel/device_info/device_info/bazel:device_info"),
         modules_label("oplus/kernel/device_info/magnetic_cover:oplus_magcvr_ak09973"),
         modules_label("oplus/kernel/device_info/magnetic_cover:oplus_magcvr_mkh100a"),
         modules_label("oplus/kernel/device_info/magnetic_cover:oplus_magcvr_mxm1120"),
         modules_label("oplus/kernel/device_info/magnetic_cover:oplus_magnetic_cover"),
         modules_label("oplus/kernel/device_info/magtransfer:oplus_magcvr_notify"),
+        modules_label("oplus/kernel/device_info/pogo_keyboard:oplus_bsp_pogo_keyboard"),
         modules_label("oplus/kernel/dfr:oplus_bsp_dfr_keyevent_handler"),
         modules_label("oplus/kernel/dfr:oplus_bsp_dfr_pmic_monitor"),
         modules_label("oplus/kernel/dft/bazel:oplus_bsp_dft_kernel_fb"),
@@ -72,6 +75,7 @@ def define_oplus_ddk_modules(target, msm_target, variant):
         modules_label("oplus/kernel/vibrator/bazel:oplus_bsp_haptic_feedback"),
         modules_label("oplus/secure/biometrics/fingerprints/bsp/uff/driver:oplus_bsp_uff_fp_driver"),
         modules_label("oplus/secure/common/bsp/drivers/oplus_secure_common:oplus_secure_common"),
+        modules_label("oplus/sensor/kernel:oplus_trace_sensor_err"),
         modules_label("oplus/sensor/kernel/qcom:oplus_sensor_deviceinfo"),
         modules_label("oplus/sensor/kernel/qcom:oplus_sensor_feedback"),
         modules_label("oplus/sensor/kernel/qcom:oplus_sensor_interact"),
@@ -79,6 +83,7 @@ def define_oplus_ddk_modules(target, msm_target, variant):
         modules_label("oplus/sensor/kernel/qcom:oplus_sensor_kookong_ir_spi"),
         modules_label("oplus/kernel/nfc:oplus_nfc"),
         modules_label("oplus/kernel/nfc:oplus_network_nfc_thn31"),
+        modules_label("oplus/kernel/tp/hbp/hbp:oplus_ft3685g"),
     ]
 
     #conditional_build modules
