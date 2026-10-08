@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c69b77ec_3412fa56",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 30975
+      },
+      "writtenOn": "2026-10-08T06:54:04Z",
+      "side": 1,
+      "message": "This fixes the battery current units and sign reported by the health HAL.\n\nBefore:\n  batteryCurrentMicroamps: -1478\n\nAfter:\n  batteryCurrentMicroamps: 874000",
+      "revId": "a7ffe0fe2bfdc82756385ead7412274958818c5a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
