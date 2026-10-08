@@ -875,6 +875,8 @@ static int battery_psy_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		pval->intval = oplus_gki_get_batt_current(chip, chip->wired_online || chip->wls_online);
+		/* Export microamps with positive values when charging. */
+		pval->intval *= -1000;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
 		pval->intval = 6500000;
