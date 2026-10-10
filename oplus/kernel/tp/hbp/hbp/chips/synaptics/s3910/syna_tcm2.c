@@ -19,6 +19,12 @@ static int syna_dev_read(void *priv, char *data, int32_t len)
 */
 void syna_hw_reset(struct syna_tcm *tcm_hcd)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&tcm_hcd->gesture_config_lock, flags);
+	tcm_hcd->gesture_config = 0;
+	tcm_hcd->gesture_config_pending = false;
+	spin_unlock_irqrestore(&tcm_hcd->gesture_config_lock, flags);
 	hbp_dev_power_type_ctrl(tcm_hcd, POWER_RESET, false);
 	msleep(10);
 	hbp_dev_power_type_ctrl(tcm_hcd, POWER_RESET, true);
@@ -41,10 +47,31 @@ static int syna_spi_sync(void *priv, char *tx, char *rx, int32_t len)
 {
 	struct syna_tcm *tcm_hcd = (struct syna_tcm *)priv;
 	int ret = 0;
+	unsigned long flags;
+	u8 *packet = (u8 *)tx;
+	bool command = packet && len >= 3 && packet[0] != 0xff;
+	bool gesture_config = packet && len == 6 && packet[0] == CMD_SET_DYNAMIC_CONFIG &&
+		packet[1] == 3 && packet[2] == 0 &&
+		packet[3] == DC_GESTURE_TYPE_ENABLE;
+
+	if (command) {
+		spin_lock_irqsave(&tcm_hcd->gesture_config_lock, flags);
+		tcm_hcd->gesture_config_pending = gesture_config;
+		if (gesture_config) {
+			tcm_hcd->gesture_config = 0;
+			tcm_hcd->pending_gesture_config = packet[4] | packet[5] << 8;
+		}
+		spin_unlock_irqrestore(&tcm_hcd->gesture_config_lock, flags);
+	}
 
 	LOGD("%s:%*ph\n", "WR", len, tx);
 
 	ret = tcm_hcd->bus_ops->spi_sync(tcm_hcd->bus_ops, tx, rx, len);
+	if (ret < 0 && gesture_config) {
+		spin_lock_irqsave(&tcm_hcd->gesture_config_lock, flags);
+		tcm_hcd->gesture_config_pending = false;
+		spin_unlock_irqrestore(&tcm_hcd->gesture_config_lock, flags);
+	}
 
 	LOGD("%s:%*ph\n", "RD", len, rx);
 
@@ -144,6 +171,7 @@ static int syna_get_irq_reason(void *priv, enum irq_reason *reason)
 {
 	struct syna_tcm *tcm_hcd = (struct syna_tcm *)priv;
 	int retval = 0;
+	unsigned long flags;
 
 	if (!tcm_hcd->probe_done) {
 		hbp_err("probe not done\n");
@@ -168,6 +196,10 @@ static int syna_get_irq_reason(void *priv, enum irq_reason *reason)
 	}
 
 	if (tcm_hcd->status_report_code == REPORT_IDENTIFY) {
+		spin_lock_irqsave(&tcm_hcd->gesture_config_lock, flags);
+		tcm_hcd->gesture_config = 0;
+		tcm_hcd->gesture_config_pending = false;
+		spin_unlock_irqrestore(&tcm_hcd->gesture_config_lock, flags);
 		hbp_info("Received REPORT_IDENTIFY, device has been reset.\n");
 		*reason = IRQ_REASON_RESET_IDENTIFY;
 	} else if (tcm_hcd->status_report_code == REPORT_TOUCH) {
@@ -178,6 +210,16 @@ static int syna_get_irq_reason(void *priv, enum irq_reason *reason)
 			|| tcm_hcd->status_report_code == REPORT_RAW
 			|| tcm_hcd->status_report_code == REPORT_DEBUG) {
 		*reason = IRQ_REASON_RESPONSE;
+		spin_lock_irqsave(&tcm_hcd->gesture_config_lock, flags);
+		if (tcm_hcd->gesture_config_pending &&
+		    tcm_hcd->status_report_code == STATUS_OK)
+			tcm_hcd->gesture_config = tcm_hcd->pending_gesture_config;
+		if (tcm_hcd->status_report_code < REPORT_IDENTIFY &&
+		    tcm_hcd->status_report_code != STATUS_ACK &&
+		    tcm_hcd->status_report_code != STATUS_IDLE &&
+		    tcm_hcd->status_report_code != STATUS_CONTINUED_READ)
+			tcm_hcd->gesture_config_pending = false;
+		spin_unlock_irqrestore(&tcm_hcd->gesture_config_lock, flags);
 	} else if (tcm_hcd->status_report_code == REPORT_DIFF) {
 		*reason = IRQ_REASON_GESTURE_DIFF;
 	}
@@ -457,6 +499,18 @@ static int syna_get_touch_points(void *priv, struct point_info *points)
 	return obj_attention;
 }
 
+static bool syna_tap_coexistence_enabled(void *priv)
+{
+	struct syna_tcm *tcm = priv;
+	unsigned long flags;
+	bool enabled;
+
+	spin_lock_irqsave(&tcm->gesture_config_lock, flags);
+	enabled = (tcm->gesture_config & (BIT(0) | BIT(13))) == (BIT(0) | BIT(13));
+	spin_unlock_irqrestore(&tcm->gesture_config_lock, flags);
+	return enabled;
+}
+
 int syna_enable_hbp_mode(void *priv, bool en)
 {
 	struct syna_tcm *tcm = (struct syna_tcm *)priv;
@@ -509,6 +563,7 @@ exit:
 
 struct dev_operations syna_ops = {
 	.spi_sync = syna_spi_sync,
+	.tap_coexistence_enabled = syna_tap_coexistence_enabled,
 	.get_frame = syna_get_frame,
 	.get_gesture = syna_get_gesture,
 	.get_touch_points = syna_get_touch_points,
@@ -533,6 +588,7 @@ static int syna_dev_probe(struct platform_device *pdev)
 		hbp_err("Failed to allocate memory for tcm_hcd\n");
 		return -ENOMEM;
 	}
+	spin_lock_init(&tcm_hcd->gesture_config_lock);
 
 	ret = syna_tcm_allocate_device(&tcm_dev, RESP_IN_POLLING);
 	if ((ret < 0) || (!tcm_dev)) {

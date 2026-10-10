@@ -249,6 +249,7 @@ struct dev_operations {
 	int (*spi_get_para)(void *priv, uint8_t *mode, uint8_t *bits_per_word, int *speed);
 	int (*get_frame)(void *priv, uint8_t *buf, uint32_t size);
 	int (*get_gesture)(void *priv, struct gesture_info *gesture);
+	bool (*tap_coexistence_enabled)(void *priv);
 	int (*get_touch_points)(void *priv, struct point_info *points);
 	int (*get_irq_reason)(void *priv, enum irq_reason *reason);
 	int (*enable_hbp_mode)(void *priv, bool en);
@@ -335,6 +336,11 @@ struct hbp_device {
 	bool fp_grip_support;
 	atomic_t fp_grip_hold; /* shared by IRQ writer and resume reader, use atomic to avoid TOCTOU */
 	int fp_grip_enable;
+	struct mutex tap_lock;
+	struct delayed_work single_tap_work;
+	struct gesture_info pending_single_tap;
+	u64 single_tap_time;
+	bool single_tap_pending;
 };
 
 struct device_state {
@@ -399,6 +405,7 @@ extern int hbp_register_devices(void *priv,
 				struct chip_info *chip,
 				struct bus_operations **bus_ops);
 extern int hbp_unregister_devices(void *priv);
+extern void hbp_cancel_single_tap(struct hbp_device *hbp_dev);
 extern bool match_from_cmdline(struct device *dev, struct chip_info *info);
 extern void hbp_set_irq_wake(struct hbp_device *hbp_dev, bool wake);
 extern void hbp_dev_power_type_ctrl(void *priv, enum power_type type, bool en);
