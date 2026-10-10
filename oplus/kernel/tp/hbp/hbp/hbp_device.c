@@ -12,6 +12,8 @@
 #include <linux/input/mt.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
+#include <linux/ktime.h>
+#include <linux/workqueue.h>
 
 #include "hbp_core.h"
 #include "hbp_tui.h"
@@ -51,6 +53,9 @@
 
 /* Gesture scan-code base used by the LineageOS touch HAL. */
 #define KEY_GESTURE_START                 246
+#define DOUBLE_TAP_TIMEOUT_MS            500
+
+static void hbp_single_tap_work(struct work_struct *work);
 
 #define HBP_IOCTRL_IRQ_FREE                _IO(HBP_IOCTRL_GROUP, 0x23)
 
@@ -345,6 +350,8 @@ static void hbp_panel_notify_callback(hbp_panel_event event, struct hbp_device *
 		hbp_debug("notify id %d event %d\n", hbp_dev->id, event);
 
 		event = hbp_panel_event_convert(event);
+		if (event == HBP_PANEL_EVENT_EARLY_RESUME)
+			hbp_cancel_single_tap(hbp_dev);
 
 		/* Protect concurrent access to states[] and state_notify fields */
 		mutex_lock(&g_hbp->state_notify_mtx);
@@ -385,6 +392,8 @@ struct hbp_device *hbp_device_create(void *priv,
 	}
 
 	hbp_dev->state = HBP_PANEL_EVENT_EARLY_RESUME;
+	mutex_init(&hbp_dev->tap_lock);
+	INIT_DELAYED_WORK(&hbp_dev->single_tap_work, hbp_single_tap_work);
 	mutex_lock(&hbp->state_notify_mtx);
 	hbp->states[id].state = hbp_dev->state;
 	mutex_unlock(&hbp->state_notify_mtx);
@@ -602,15 +611,113 @@ void touch_call_fp_grip(struct hbp_device *hbp_dev, int state)
 	hbp_info("transfer girp of fp pass state:%d\n", event_data.value);
 }
 
+static void hbp_report_gesture_key(struct hbp_device *hbp_dev,
+				  struct gesture_info *gesture)
+{
+	unsigned int keycode = gesture->type == DoubleTap ? KEY_WAKEUP :
+		KEY_GESTURE_START + gesture->type;
+
+	gesture->id = hbp_dev->id;
+	hbp_core_set_gesture_coord(gesture);
+	input_report_key(hbp_dev->i_dev, keycode, 1);
+	input_sync(hbp_dev->i_dev);
+	input_report_key(hbp_dev->i_dev, keycode, 0);
+	input_sync(hbp_dev->i_dev);
+}
+
+void hbp_cancel_single_tap(struct hbp_device *hbp_dev)
+{
+	mutex_lock(&hbp_dev->tap_lock);
+	hbp_dev->single_tap_pending = false;
+	mutex_unlock(&hbp_dev->tap_lock);
+	cancel_delayed_work_sync(&hbp_dev->single_tap_work);
+}
+
+static void hbp_single_tap_work(struct work_struct *work)
+{
+	struct hbp_device *hbp_dev = container_of(to_delayed_work(work),
+		struct hbp_device, single_tap_work);
+	u64 deadline, now;
+
+	mutex_lock(&hbp_dev->tap_lock);
+	deadline = hbp_dev->single_tap_time +
+		(u64)DOUBLE_TAP_TIMEOUT_MS * NSEC_PER_MSEC;
+	now = ktime_get_ns();
+	if (hbp_dev->single_tap_pending &&
+	    !hbp_dev->dev_ops->tap_coexistence_enabled(hbp_dev->priv)) {
+		hbp_dev->single_tap_pending = false;
+		goto out;
+	}
+	if (hbp_dev->single_tap_pending && now < deadline) {
+		mod_delayed_work(system_wq, &hbp_dev->single_tap_work,
+			nsecs_to_jiffies(deadline - now) + 1);
+		goto out;
+	}
+	if (hbp_dev->single_tap_pending &&
+	    (hbp_dev->state == HBP_PANEL_EVENT_SUSPEND ||
+	     hbp_dev->state == HBP_PANEL_EVENT_EARLY_SUSPEND))
+		hbp_report_gesture_key(hbp_dev, &hbp_dev->pending_single_tap);
+	hbp_dev->single_tap_pending = false;
+out:
+	mutex_unlock(&hbp_dev->tap_lock);
+}
+
+static bool hbp_arbitrate_tap(struct hbp_device *hbp_dev,
+			    struct gesture_info *gesture)
+{
+	u64 now = ktime_get_ns();
+	int max_x = input_abs_get_max(hbp_dev->i_dev, ABS_MT_POSITION_X);
+	int max_y = input_abs_get_max(hbp_dev->i_dev, ABS_MT_POSITION_Y);
+	bool enabled;
+	bool handled = false;
+
+	mutex_lock(&hbp_dev->tap_lock);
+	enabled = hbp_dev->dev_ops->tap_coexistence_enabled &&
+		hbp_dev->dev_ops->tap_coexistence_enabled(hbp_dev->priv);
+	if (gesture->type != SingleTap || !enabled) {
+		if (enabled && hbp_dev->single_tap_pending &&
+		    gesture->type != DoubleTap)
+			hbp_report_gesture_key(hbp_dev, &hbp_dev->pending_single_tap);
+		hbp_dev->single_tap_pending = false;
+		cancel_delayed_work(&hbp_dev->single_tap_work);
+		goto out;
+	}
+
+	if (hbp_dev->single_tap_pending) {
+		if (now - hbp_dev->single_tap_time <
+		    (u64)DOUBLE_TAP_TIMEOUT_MS * NSEC_PER_MSEC &&
+		    abs((int)gesture->Point_start.x -
+			(int)hbp_dev->pending_single_tap.Point_start.x) < max_x / 10 &&
+		    abs((int)gesture->Point_start.y -
+			(int)hbp_dev->pending_single_tap.Point_start.y) < max_y / 10) {
+			hbp_dev->single_tap_pending = false;
+			cancel_delayed_work(&hbp_dev->single_tap_work);
+			gesture->type = DoubleTap;
+			goto out;
+		}
+		hbp_report_gesture_key(hbp_dev, &hbp_dev->pending_single_tap);
+	}
+
+	hbp_dev->pending_single_tap = *gesture;
+	hbp_dev->single_tap_time = now;
+	hbp_dev->single_tap_pending = true;
+	mod_delayed_work(system_wq, &hbp_dev->single_tap_work,
+		msecs_to_jiffies(DOUBLE_TAP_TIMEOUT_MS));
+	handled = true;
+out:
+	mutex_unlock(&hbp_dev->tap_lock);
+	return handled;
+}
+
 static void hbp_gesture_report(struct hbp_device *hbp_dev, struct gesture_info *gesture)
 {
-	unsigned int keycode;
-
 	if (gesture->type == FingerprintDown ||
 		gesture->type == FingerprintEarlyDown ||
 	    gesture->type == FingerprintUp) {
 		hbp_fingerprint_report(hbp_dev, gesture, 0);
 	} else {
+		if (hbp_arbitrate_tap(hbp_dev, gesture))
+			return;
 		hbp_info("device-%d detect %s gesture\n",
 			hbp_dev->id,
 			gesture->type == DoubleTap? "double tap" :
@@ -638,15 +745,7 @@ static void hbp_gesture_report(struct hbp_device *hbp_dev, struct gesture_info *
 
 		if (gesture->type > UnknownGesture &&
 		    gesture->type <= FP_GESTURE_RELEASE) {
-			gesture->id = hbp_dev->id;
-			hbp_core_set_gesture_coord(gesture);
-
-			keycode = gesture->type == DoubleTap ? KEY_WAKEUP :
-				  KEY_GESTURE_START + gesture->type;
-			input_report_key(hbp_dev->i_dev, keycode, 1);
-			input_sync(hbp_dev->i_dev);
-			input_report_key(hbp_dev->i_dev, keycode, 0);
-			input_sync(hbp_dev->i_dev);
+			hbp_report_gesture_key(hbp_dev, gesture);
 		} else {
 			hbp_err("detect unkown gesture\n");
 		}
@@ -823,6 +922,9 @@ static irqreturn_t hbp_irq_threaded_fn(int irq, void *dev_id)
 				|| reason == IRQ_REASON_RESPONSE
 				|| reason == IRQ_REASON_RESET_IDENTIFY
 				|| reason == IRQ_REASON_UPLINK_REPORT) {
+			if (reason != IRQ_REASON_RESPONSE &&
+			    reason != IRQ_REASON_UPLINK_REPORT)
+				hbp_cancel_single_tap(hbp_dev);
 			goto report_frame;
 		}
 	}
@@ -896,6 +998,7 @@ int hbp_unregister_irq(struct hbp_device *hbp_dev)
 
 	disable_irq(hbp_dev->irq);
 	free_irq(hbp_dev->irq, hbp_dev);
+	hbp_cancel_single_tap(hbp_dev);
 	hbp_dev->irq_freed = true;
 
 	return 0;
