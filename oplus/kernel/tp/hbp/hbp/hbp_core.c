@@ -203,6 +203,7 @@ int hbp_unregister_devices(void *priv)
 	struct hbp_device *hbp_dev = __hbp_find_device(priv);
 
 	if (hbp_dev) {
+		hbp_cancel_single_tap(hbp_dev);
 		//hbp_unregister_irq(hbp_dev);
 		//kfree(hbp_dev);
 	}
