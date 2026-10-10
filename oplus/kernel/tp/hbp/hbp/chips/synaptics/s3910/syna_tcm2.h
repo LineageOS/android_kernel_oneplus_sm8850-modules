@@ -1,6 +1,7 @@
 #include <linux/irqreturn.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
+#include <linux/spinlock.h>
 #include <linux/sched.h>
 #include "../../../hbp_core.h"
 #include "../../../hbp_spi.h"
@@ -46,6 +47,10 @@ struct syna_tcm {
     bool probe_done;
     bool is_attn_redirecting;
     bool char_dev_irq_disabled;
+    spinlock_t gesture_config_lock;
+    u16 gesture_config;
+    u16 pending_gesture_config;
+    bool gesture_config_pending;
 };
 
 enum fingerprint_err_type {
