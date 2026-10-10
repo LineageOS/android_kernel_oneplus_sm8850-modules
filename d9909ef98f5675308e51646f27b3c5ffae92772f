@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b112c46f_0af2d275",
+        "filename": "oplus/kernel/tp/hbp/hbp/hbp_device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 10067
+      },
+      "writtenOn": "2026-10-10T17:58:17Z",
+      "side": 1,
+      "message": "also reduced this to 300ms since 500ms is way too long.",
+      "revId": "d9909ef98f5675308e51646f27b3c5ffae92772f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
