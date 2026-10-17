@@ -935,6 +935,9 @@ int icnss_qmi_get_dms_mac(struct icnss_priv *priv)
 	struct dms_get_mac_address_resp_msg_v01 resp;
 	struct qmi_txn txn;
 	int ret = 0;
+#ifdef OPLUS_FEATURE_WIFI_MAC
+	int i;
+#endif /* OPLUS_FEATURE_WIFI_MAC */
 
 	if  (!test_bit(ICNSS_QMI_DMS_CONNECTED, &priv->state)) {
 		icnss_pr_err("DMS QMI connection not established\n");
@@ -986,7 +989,14 @@ int icnss_qmi_get_dms_mac(struct icnss_priv *priv)
 		goto out;
 	}
 	priv->dms.mac_valid = true;
+#ifdef OPLUS_FEATURE_WIFI_MAC
+	/* DMS reports the MAC address in reverse byte order */
+	for (i = 0; i < QMI_WLFW_MAC_ADDR_SIZE_V01; i++)
+		priv->dms.mac[i] =
+			resp.mac_address[QMI_WLFW_MAC_ADDR_SIZE_V01 - i - 1];
+#else
 	memcpy(priv->dms.mac, resp.mac_address, QMI_WLFW_MAC_ADDR_SIZE_V01);
+#endif /* OPLUS_FEATURE_WIFI_MAC */
 	icnss_pr_info("Received DMS MAC: [%pM]\n", priv->dms.mac);
 out:
 	return ret;
