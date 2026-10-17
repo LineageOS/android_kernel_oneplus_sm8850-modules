@@ -253,7 +253,7 @@ def _define_modules_for_target_variant(target, variant):
             kconfig = "icnss2/Kconfig",
             copts = [],
             defconfig = defconfig,
-            local_defines = ["OPLUS_FEATURE_WIFI_BDF"],
+            local_defines = ["OPLUS_FEATURE_WIFI_BDF", "OPLUS_FEATURE_WIFI_MAC"],
             conditional_srcs = {
                 "CONFIG_ICNSS2_QMI": {
                     True: [
