@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "605fd3f2_12c4eace",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 38356
+      },
+      "writtenOn": "2026-10-17T20:38:33Z",
+      "side": 1,
+      "message": "Tested on macan (OnePlus 15R, CPH2769), which uses icnss2:\n\n- Before: DMS MAC received as 3b:70:26:bc:ed:78 (multicast bit set),\n  cnss_utils reported \"WLAN MAC address is not set\" and the device\n  ended up with a placeholder MAC (00:12:4a:61:bf:9b).\n- After: \"Received DMS MAC: [78:ed:bc:26:70:3b]\", which is BT MAC + 1\n  as on stock, and Android stores it as wifi_sta_factory_mac_address.\n\nSame approach as 504266/504265 for cnss2.",
+      "revId": "d7e172e18cdd0622a312a7c17985bd0ee593ae0e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
