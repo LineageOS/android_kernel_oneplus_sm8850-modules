@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f5daef0_75c4f0a5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 34519
+      },
+      "writtenOn": "2026-10-28T09:02:39Z",
+      "side": 1,
+      "message": "Works fine on iceland on OOS16 blobs",
+      "revId": "1303ff9c0dbcf8ef0892d5ee1b818a1b41d7681f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
