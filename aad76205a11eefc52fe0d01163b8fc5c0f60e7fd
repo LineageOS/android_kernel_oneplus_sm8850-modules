@@ -16,6 +16,24 @@
       "message": "Isn’t this a port of I09984f44314316367f25eb514924aedf5f01a464? Please fix the author and commit message.",
       "revId": "aad76205a11eefc52fe0d01163b8fc5c0f60e7fd",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "69f705b6_0361d7fb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 38356
+      },
+      "writtenOn": "2026-11-15T15:26:43Z",
+      "side": 1,
+      "message": "Thanks, you’re right, I missed crediting the original author when porting it. This is LuK1337’s cnss2 change (504265) ported to icnss2. PS2 restores him as the author with the original date and commit message, plus a note about the port.",
+      "parentUuid": "f1bd66c4_0a8df07a",
+      "revId": "aad76205a11eefc52fe0d01163b8fc5c0f60e7fd",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
